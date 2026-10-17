@@ -21,7 +21,8 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
 
 - **Keywords match at word starts only.** "ring" in "gas spring" sent an eyelet to the lathe; "shaft" in "Shaft
   Retention Plate" made a disc; "belt" in "Bottom Belt Gearbox Plate" made a belt; a "nut" keyword lathed a square nut
-  strip into a rod (nuts pass the hex test anyway, don't add "nut"). Nothing named "plate" is ever lathed.
+  strip into a rod (nuts pass the hex test anyway, don't add "nut"). Nothing named "plate" is ever lathed: a sprocket
+  named "… Plate Sprocket" was decimated with all its teeth; force `"lathe"` for such parts.
 - **Names lie.** A part called "…Chain" was a clamp block; "Wheel, …, Bearing Bore" is a hub; a "Kraken … Back Cap" was a
   printed cover. Check a render before trusting a name for method detection.
 - **Generic names cover unrelated parts** ("Part 40" = a motor in one module and a spacer in another; "Part 1" = a
@@ -71,7 +72,8 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
   decimated (`LATHE_REMODEL`). Without the 1/3-length cap, closing flattened screw domes and rivet heads into pucks.
 - **The remodel can flatten crowned or barrel profiles** (mecanum rollers) into cylinders: test one part first.
 - **Open C-shaped bands score as perfectly round** (0.0003): the lathe closes the gap into a ring → `"decimate"`. Check
-  angular coverage, not just roundness.
+  angular coverage, not just roundness. A FLAT C-shaped spacer ring with bolt holes was lathed into a washer: `"plate"`
+  keeps the gap and the holes.
 - **Cups**: every per-height profile closes a recessed cup. `"lathe-open"` keeps a bore; `"section lathe"` keeps cups
   with a floor and a boss (not spoked gears: 24 cuts miss narrow spokes and leave a floating hub); the majority lathe
   (`majlathe.py`: a cell is solid where > 50 % of the circumference is material) keeps a recessed cup with its boss and
@@ -113,7 +115,10 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
 
 - **Metric tubes** (25 × 50 mm) miss the imperial size test by 0.8 mm and fall to the profile extrusion, which drops every
   hole: add the sizes to `TUBE_SIZES_MM`. Short tubes (a 2×2 tube 96 mm long; a 7" 2×1) fail a "length > 4× section"
-  rule: 3× works.
+  rule: 3× works; visible 2×1 tubes 4" and 4.5" long fail 3× too and were decimated without a hole (1.8× works).
+- **Round tubes whose OD is a stock box size** (1.5" and 2" dead-axle tubes) pass the bounding-box tube test and came out
+  as three slivers: reject round sections in `is_tube` with `geo.revolve_score` along the tube axis (box tubes score
+  0.13–0.29, round tubes ~0.002; a > 0.03 cut separates them).
 - **A tube rotated inside its mesh** (4° or 35° about its own axis) fits no size and became a profile extrusion or a
   bbox-sized box without holes: detect the frame from the wall normals first, whenever the section is roughly
   tube-sized.
@@ -156,6 +161,12 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
   borderline parts with `DECIMATE_RATIO`, and patch decisions into the reviewed file instead of rerunning.
 - **`DECIMATE_RATIO` applies to the plugged + dissolved mesh**, not the CAD (0.2 gave far fewer tris than expected), and
   is ignored for parts the "already light" check keeps: pin a Collapse builder for those.
+- **The decimate prep's planar dissolve can cut a window**: on printed camera mounts the 5° dissolve left an n-gon that
+  the concave-n-gon check missed and that was triangulated straight across the camera window; the quality loop then gave
+  up (p99 error 15 mm, no Collapse) and kept 6–7.7k tris. Keeping holes did not help (a camera right behind a window also
+  makes the plug test call it filled). A plain Collapse of the welded CAD at a pinned ratio, without the plug/dissolve
+  prep (a `cfg.BUILDERS` builder + `SHADE_EXTRA`), keeps the window: 12k → ~1k at 0.08. Test ratios with culled renders
+  from 3 sides first.
 - **Normals before decimating**: a plain recalc can turn open CAD inside-out; per-piece orientation that agrees with the
   original normals, a parity vote only when it lowers back-face hits (a vote once flipped a whole housing to 97 % back
   faces). Never accept a normals pass that makes orientation worse.
@@ -226,6 +237,11 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
 - **A library asset can include a stage the CAD lacks** (a gearbox output stage): slide it onto the CAD's input face.
 - **Library swaps on objects carrying a live Collapse** get decimated by it (a 12-tri "disc" in decision renders): strip
   Decimate modifiers when swapping.
+- **Box electronics can fit a few degrees off their axes** (a PDH 85.9° instead of 90°: faces 4–8 mm off in libcheck):
+  snap the fitted rotation (report.json `lib_matrix`) to the nearest axis-aligned one about the asset's own centre, then
+  centre it by the libcheck face offsets, 0.3 mm short of the face it sits on.
+- **Library meshes are shared**: a shift for some instances only (motors whose front boss lies in a module plate) goes on
+  a mesh copy for those objects; object transforms must stay equal to the CAD (tfcheck).
 
 ## 12. Files, matrices and Blender API
 
@@ -240,4 +256,11 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
 - **`--factory-startup`** leaves the default cube, camera and light: `read_factory_settings(use_empty=True)`.
 - **Names over 63 bytes** are cut by the FBX importer (use `fbx_import.py`); STEP builds shorten long names on purpose.
 - **Object names containing "/"** become sub-folders in render output paths.
+- **Blender exits 0 when a `--python` script raises**: a chained run script carried on with a stale file after a post step
+  crashed. Run robot post steps with `--python-exit-code 1`.
+- **`Mesh.materials.clear()` resets every face's material index to 0**: store the indices, clear, write them back with
+  `polygons.foreach_set("material_index", …)`. Objects have `children_recursive` but no `parent_recursive`.
+- **ImageMagick `montage` decodes every input at full size**: 60 per-object JPGs (up to 3200 px) passed a 2 GB job cap
+  and were OOM-killed. Shrink each image on its own first (`magick -define jpeg:size=600x340 X -thumbnail 300x170`),
+  then montage the thumbnails.
 - **`MemoryMax` counts touched pages**: test the guard with memory that is actually written.

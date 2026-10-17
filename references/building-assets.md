@@ -113,7 +113,10 @@ Three starting points:
 - Boxy electronics cases: Collapse damages holes and recesses (corner holes into triangles, LED recesses into streaks).
   Build them procedurally like the Limelight assets: `limelight2_asset.py` (case with corners concentric with the
   holes, chamfer, LED recesses, lens ring), `limelight3g_asset.py` (reuses the Limelight 4's own case and corner
-  cutter, openings as boolean cutters measured with bisect slices and ray grids). Real colours from product photos
+  cutter, openings as boolean cutters measured with bisect slices and ray grids), `limelight3a_asset.py` (the 3G build
+  without LEDs, grey case, blue status LED; a Collapse-based `cam_asset.py` try of the same camera turned its corner
+  holes into triangles and blotched the front). Build into the library path itself so the RobotMaterials link stays
+  relative, then `gapcheck.py` (0 px). Real colours from product photos
   ("CAD yellow" is meaningless).
 
 ## 5. Motors, batteries, signal lights and small electronics

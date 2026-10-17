@@ -48,7 +48,7 @@ automated checks yourself after every run; give reviewers only what needs eyes.
 | Back faces | `build.backface_pct` per decimated or library mesh ≤ the CAD's own + max(1 point, 15 % of the CAD's) | never in absolute terms: some CAD parts are inside-out themselves |
 | Hex stock | `hexcheck.py` (6th harmonic of the cross-section at ¼, ½, ¾ length: 1/2" hex ~0.43 mm, 3/8" ~0.32, a lathed 16-gon ~0.001), plus a list of every part with the robot's hex-stock cross-section looked at one by one | a 16-gon reads as hex at sheet size; four review rounds missed six round shafts. It skips short pieces (< 2× diameter: spacers, collars, nuts) and gives false "ROUND" on grooved hex stock (read the value) |
 | Hole visibility | `capvis.py` on every "holes closed" claim before fixing (no `CAPVIS_FLOOR`: the underside counts as seen; `CAPVIS_CLEAR` for clear panels): vis = share of 96 hemisphere rays escaping; 0 never seen, < 0.02 glimpsed, > 0.1 clearly visible | 7 of 10 flagged parts once had vis 0. It flags any deviation > 0.8 mm (not only holes) and is an upper bound (it looks into cavities too) |
-| Coplanar z-fighting | point-sampled: sample one part's faces, ray-cast ±0.02 mm onto same-facing faces of the other (within 0.05 mm and 1.8°), measure the gap in BOTH files, keep only pairs visible from outside | plane-offset comparisons (`n·p`) gave three false claims of 1.5–3.3 mm real gaps; pre-existing CAD z-fights aren't yours to fix |
+| Coplanar z-fighting | point-sampled (`zfight.py`: once on the CAD as the baseline, then on every result with that baseline; it prints only new pairs): samples on each part's faces, another part's same-facing face within 0.05 mm and 1.8°; keep only pairs visible from outside; pairs of 1–4 samples are a few mm² | plane-offset comparisons (`n·p`) gave three false claims of 1.5–3.3 mm real gaps; pre-existing CAD z-fights aren't yours to fix |
 | Round holes | wall MID-points of every open round hole ≤ 0.35 mm p95 off the CAD | rim points lie in the face plane: a hole turned into a triangle scored ~0 |
 | Side counts | lathe sides vs the radius tier | |
 | Plate caps | cap AREA per height level vs the CAD | flaps spanning tooth gaps passed every boundary-distance and open-edge check |
@@ -149,5 +149,7 @@ a sheet is clean. End with a count per severity and CLEAN / NOT CLEAN.
 the same tight ortho frame, ≥ 0.15 mm per pixel up to 3200 px, the result culled); `object_compose.py` labels them
 `O001 - <name> - view 1.jpg` (visible parts first, REVIEW in orange) + `index.csv`; JPEG q92 (PNG was 1.7 GB for 247
 parts). Filter exploded objects with empty meshes first (the script crashed on them). Make downscaled thumbnail sheets
-(`magick X -thumbnail 300x170`, then `montage -tile 10x6`, with an explicit font: without one, labels render as boxes)
+(each image shrunk on its own first, `magick -define jpeg:size=600x340 X -thumbnail 300x170`, then `montage -tile 10x6`
+on the thumbnails, with an explicit font: without one, labels render as boxes; a montage of full-size images was
+OOM-killed)
 and look at every one: a close-up from the opposite side caught square clamp-ear ends no sheet or reviewer had.

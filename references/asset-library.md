@@ -62,7 +62,9 @@ new assets: [building-assets.md](building-assets.md).
   match by size **measured in the mesh's own frame** (world bboxes of rotated objects read up to √2 too big): roboRIO
   146 × 143 × 35 mm, Pigeon 2.0 47 × 45 × 13, CANivore 57 × 39 × 19, Ethernet switch 107 × 101 × 27, Limelight 4
   80.1 × 48.1 × 32.6 (the LL3 is 29.5 mm thick; Onshape names the LL4 "Minimal"), battery 180 × 76 × 167, signal
-  lights 57 × 57 × 82 (domed) and 45 × 45 × 74 (tapered amber lens).
+  lights 57 × 57 × 82 (domed) and 45 × 45 × 74 (tapered amber lens). A 29.5 mm Limelight is a 3, 3G or 3A (the 3G case):
+  the 3A is light grey with no LED bores on its front (only the lens), the 3 / 3G black with green LEDs: decide by colour
+  and front, not by the fit (a black LL3 fitted the grey 3A at 0.96 mm).
 - A library model of a different product is not a match even if it fits under the limit (a signal light accepted at
   4.2 mm was the wrong product): compare sizes; a different product gets its own asset at the library's fidelity
   (show the A/B at the end).
@@ -156,3 +158,12 @@ bores), and check that no CAD piece pokes through a library body (motor connecto
 - The library Kraken X44 / X60 caps have smoothed chamfer normals (a cone-like gradient on the end caps); cosmetic.
 - Some library meshes carry open edges (roboRIO, MAXPlanetary); invisible with culling, don't chase them.
 - Two versions of the 3" compliant wheel exist on purpose (48-sided and 16-sided).
+- The NEO Vortex asset (79.7 mm long) is the motor WITH its docked SPARK Flex in one body: fitted to the CAD motor body
+  alone it misses by 5 mm. Swap it as an assembly (`LIB_ASSEMBLIES`: motor body + SPARK Flex per Vortex assembly empty,
+  target "largest"); the fit lands at 2.9–3.0 mm (`max_mm` 3.5). The CAD SPARK Flex goes to REVIEW - Replaced.
+- `mk5n_place.py` keeps the library module's own colours. When the CAD's module colours are informative (house rule),
+  recolour each placed type's shared mesh with `build.recolour_from_cad` voted against that module's replaced CAD pieces
+  (evaluated, world space) in a post step.
+- Some Onshape robots carry a vendor "Simplified PDH" (4.9k tris) lighter than the library PDH (7.4k): library by
+  default (`LIB_KEEP_HEAVIER`), the A/B shown at the end.
+- `Limelight 3A`: built from the 3G case by `limelight3a_asset.py` (grey, no LEDs, blue status LED, 672 tris).
