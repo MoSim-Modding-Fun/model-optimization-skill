@@ -34,9 +34,12 @@ for o in [o for o in sc.objects if "exploded_from" in o]:
         rev = next((c.name for c in p.users_collection if c.name.startswith("REVIEW")), None)
         groups.setdefault(rev, []).append(p)
     for rev, ps in groups.items():
-        key = (rev, tuple(sorted(p.data.name for p in ps)), tuple(sorted(m.type for p in ps for m in p.modifiers)))
+        # piece matrices are part of the key: instanced pieces (explode with shared meshes) of two objects can use the
+        # same meshes at different places
+        key = (rev, tuple(sorted((p.data.name, tuple(round(v, 7) for r_ in p.matrix_basis for v in r_)) for p in ps)),
+               tuple(sorted(m.type for p in ps for m in p.modifiers)))
         if key not in cache:
-            parts = [(piece_mesh(p), p.matrix_basis.copy()) for p in ps]  # pieces sit at identity under o
+            parts = [(piece_mesh(p), p.matrix_basis.copy()) for p in ps]  # piece transforms relative to o
             cache[key] = libcombo.join_meshes(f"{o['exploded_from']}" + (f" [{rev}]" if rev else ""), parts)
             for me, _ in parts:
                 bpy.data.meshes.remove(me)

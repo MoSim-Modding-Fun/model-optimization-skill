@@ -99,6 +99,10 @@ date > "$O/run.done"
 
 Chain with `&&`: a killed pipeline otherwise lets later steps run on stale files and write `run.done`.
 
+Multi-piece library fits cost ~40 s each (48 PCA/ICP starts on the joined point cloud): 28 of them (motors, encoders,
+cameras, electronics) were most of a 27-minute pipeline, and twice that while another session trained a model on most
+cores. Batch the fixes of one QA pass into the next run, and stop a run that a pending fix will redo anyway.
+
 The assemble script (deliverable + review folder):
 1. Back up an existing deliverable to `_work/simplified_backup_MMDD_HHMM.blend`, and refuse to continue if it changed
    since your last delivery (the owner edited it) until you've diffed it.

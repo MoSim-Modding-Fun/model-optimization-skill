@@ -85,7 +85,7 @@ Ask only for permissions (downloads, commits, pushes, deletions, writing outside
 - Asset library: present and current (references/asset-library.md §1). `ls Components/` before deciding a part has no
   match.
 - Find the input type in [references/input-types.md](references/input-types.md) (glTF soup, STEP, game FBX, -Y up, very
-  large CAD, merged sub-assemblies) and follow its notes.
+  large CAD, merged sub-assemblies, every copy of a part merged into one mesh) and follow its notes.
 - New robot config: copy `"$TK/robots/rexample.py"` (or the closest existing config) to `<robot config dir>/r<name>.py`.
 
 ### 3. Inventory and plan (show it, then keep going)
@@ -164,6 +164,13 @@ own scope count against the app.
 - Keep tool output small (filter before printing).
 - Other sessions: wake them one at a time after a RAM check, and archive advisors again before waking the next.
 - Before a heavy job on Linux, hold off while IO pressure is high (the guard waits above 50 %).
+- **A simplification is usually not the priority job on the machine.** When the owner names another session's work as
+  the priority (a model training, a game build), run every guarded job with `YIELD_TO='<its process pattern>'
+  MIN_FREE=40 MAX_SWAP=25`: nothing starts while a matching process over 500 MB runs, and a running job is killed
+  (exit 76, rerun it later) when one starts. Don't spawn reviewer agents while it runs. Another session's unscoped
+  13 GB training run plus a 4 GB game build once filled the Claude app's cgroup with 22 GB of swap, and systemd-oomd
+  killed every session at once, though no simplification job was running. If you see such a process, tell its
+  session that a separate scope (`systemd-run --user --scope -p MemoryMax=…`) limits a crash to that one job.
 
 ## Reference files
 

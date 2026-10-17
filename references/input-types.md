@@ -13,6 +13,7 @@ at intake. `$TK` below is the skill's `toolkit/` folder.
 7. Very large CADs: batched cleanup first
 8. Merged sub-assemblies and fused vendor parts
 9. Hand-made block-outs
+10. Exports that merge every copy of a part into one mesh
 
 ## 1. Owner-imported `.blend` from an Onshape / SolidWorks glTF (the common case)
 
@@ -42,7 +43,12 @@ When nothing provided is a `.blend`, import it yourself (owner, 2026-10-16); if 
 Import with the default glTF
 importer from an empty scene (`bpy.ops.wm.read_factory_settings(use_empty=True)` first), through `bl.sh` with a raised
 `MEM` (a 250 MB glb needed ~6 GB; say so), save compressed, then check the up axis and the floor. ~30–60 s per 100 MB.
-Set `save_version = 0` or check the output before rerunning, to avoid stray `.blend1` files.
+Set `save_version = 0` or check the output before rerunning, to avoid stray `.blend1` files. `"$TK/glb_import.py"` does
+all of this and prints the counts and the world bbox.
+- **Time and memory follow the primitive count, not the file size.** Read the glb's JSON chunk first (a guarded
+  `struct` + `json` read of the first chunk: nodes, meshes, accessors, primitives per mesh, materials, top meshes by tris).
+  Onshape can write one primitive per B-rep face: a 680 MB glb with 271k primitives (8M tris) took 12 min at ~4.2 GB
+  resident, and single meshes with tens of thousands of primitives took minutes each.
 
 ## 3. STEP
 
@@ -113,6 +119,10 @@ views): run everything on a work copy where ONLY the root empty is rotated -90°
 rotation (mode and quaternion) in the deliverable, and compare every object's world matrix with the ORIGINAL import
 (`"$TK/tfcheck.py"`, 0.0 deviation). Objects the run adds must sit under the root. `VIEWS` and `LIB_NUDGE_MM` are in the
 work frame. Deliver in the source's orientation.
+- **No root to turn** (every object unparented): `"$TK/zup_root.py" make` puts everything under a new `_zup_root` turned
+  +90° about X (+Y up becomes +Z up); `zup_root.py restore` (or the same steps in the assemble script) sets the root back
+  to identity, unparents every child with its world matrix and removes the root, before verify/tfcheck. Run prep.py
+  (names, matrices, materials) on the source frame first, so `tf_src.json` is the source's.
 
 ## 7. Very large CADs: batched cleanup first
 
@@ -152,3 +162,32 @@ weld fuses neighbours into blobs. What works: raw islands; islands whose extents
 (within 0.02 mm) clustered into one part by union-find; each part welded on its own; per-part pipeline with builders for
 flat single-sided sheets, open hole walls and open revolves (anything open that isn't a clean revolve stays as it is:
 the lathe closes open pockets into plugs); joined back into the same mesh. Render QA with `CULL=both`.
+
+## 10. Exports that merge every copy of a part into one mesh
+
+Seen on an Onshape glTF: no hierarchy at all (every node a root mesh), each node one CAD body with ALL its copies baked
+in world space (one mesh holds all 99 copies of a screw; one holds all 15 motor housings), world bboxes spanning the
+robot, and one primitive per B-rep face. The pipeline works per mesh, so nothing can be planned until the copies are
+pieces of their own.
+- **Flow**: `glb_import.py` → Phase 1 (if large) → `prep.py` with no `EXPLODE` (writes the welded copy) → `zup_root.py
+  make` if it stands on +Y → `"$TK/explode_inst.py"` (`EXPLODE_ALL`) → `vis.py` → `pipeline.py` → post steps on the
+  exploded file → `implode.py` → `phase3.py` → assemble (frame restore).
+- **Instancing**: the exporter tessellates every copy separately, so copies don't share vertex order (an exact
+  vertex-order match found 9 copies of 2,727 pieces). `explode_inst.py` matches by shape instead (materials, area,
+  PCA eigenvalues, then PCA alignment + ICP and a two-way vertex-to-surface check ≤ 0.05 mm): 648 copies shared, 2,079
+  meshes left; 0.2 mm would have found only 143 more. It is also what keeps a screw's copies identical in the result.
+- **Object count**: pieces + the emptied parents count against `vis.py`'s 4,095 ids (2,727 + 953 fitted).
+- **Moving groups have to come from positions** (no hierarchy): `group_of` on the piece's world bbox centre against
+  measured regions (module corners from the wheel centres, everything in front of the front rail = intake, a cylinder
+  around a tower), checked with a render coloured by group before vis.
+- **Library swaps of electronics and motors** are multi-piece: every solid of a motor or controller is its own node,
+  holding all its copies. `LIB_ASSEMBLIES` with a `groups` function that picks an anchor piece per copy (by face count
+  or PCA extent: local `dimensions` of a piece at an angle read short) and adds every selected piece within ~1.5 motor
+  radii of the nearest anchor.
+- **Swerve modules have no empties**: fit the library module per corner group (`"$TK/module_fit.py"`, `MODULE_FIT`).
+- **QA at piece level**: render_pairs `before` on the exploded CAD and `after` on the pre-implode result (same object
+  names); libcheck, hexcheck, zfight and capvis the same way; robot views on the final file. The final file's objects
+  are the merged bodies again: per-object crops of them are meaningless.
+- Welding (the 1 µm prep weld, Phase 1's Merge by Distance) joins copies whose faces touch exactly into one island: a
+  2 in wide compliant wheel with a seam round its middle may be two stacked 1 in wheels. Check the vendor width before
+  choosing a library size (two 1 in library wheels or one 2 in wheel look the same from outside).

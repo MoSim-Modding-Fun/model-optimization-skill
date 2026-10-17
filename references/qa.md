@@ -16,7 +16,9 @@ automated checks yourself after every run; give reviewers only what needs eyes.
 ## 1. The loop
 
 1. **Renders.** `render_pairs.py before` (once per source; it strips the CAD's custom normals) and `CULL=1 … after`, then
-   `make_sheets.py` / `sheets.py`. Render the AFTER pass with **backface culling** (Unity culls; unculled renders hide
+   `make_sheets.py` / `sheets.py` (run `"$TK/review_sync.py"` on the run's final piece file first: post steps such as a
+   library module placement move pieces into REVIEW after `report.json` was written, and two reviewers spent their time
+   on 88 unlabelled replaced module pieces). Render the AFTER pass with **backface culling** (Unity culls; unculled renders hide
    flipped faces and slits; `CULL=both` for single-sided sources). Workbench, cavity **off** (cavity makes thin rebuilt
    triangles look crumpled; the owner once called a clean plate "too low poly" because of it), metallic 0 for the
    render. Sheet labels must take the REVIEW status from the final file's collections, not the pipeline report (parts
@@ -32,9 +34,12 @@ automated checks yourself after every run; give reviewers only what needs eyes.
    one Blender at a time, write only under `_work/reviewN/`.
 5. **Verify every claim** (section 4) before fixing: about a third of late findings were false positives. Add each
    settled claim to the brief's "already measured" list, or the next round reports it again.
+   Measure your own "dropped on purpose" notes before they go in the brief too: one said "shallow underside grooves"
+   about 5 mm pockets on the top of a ring (the rebuild had lost them); the reviewer measured it and rated it HIGH.
 6. **Fix** with try-scripts on the 1–5 affected parts first (load the file, call the `build.*` function, render it next to
    the CAD) instead of a 15–45 min full run; patch small changes into the finished file (`patch_final.py`: live Collapse
    ratios, per-piece hex, plug + stepped rebuilds) rather than rerunning: Collapse is not repeatable run to run.
+   After a patch, re-render only the changed AFTER tiles (`rerender_pairs.py`) and rebuild the sheets.
 7. Repeat until a round comes back clean (no HIGH, no real MEDIUM). Budget 5+ rounds on a 3M-tri robot: reviewers dig
    deeper each round, and opening one layer of holes exposes the next.
 
@@ -48,7 +53,7 @@ automated checks yourself after every run; give reviewers only what needs eyes.
 | Back faces | `build.backface_pct` per decimated or library mesh ≤ the CAD's own + max(1 point, 15 % of the CAD's) | never in absolute terms: some CAD parts are inside-out themselves |
 | Hex stock | `hexcheck.py` (6th harmonic of the cross-section at ¼, ½, ¾ length: 1/2" hex ~0.43 mm, 3/8" ~0.32, a lathed 16-gon ~0.001), plus a list of every part with the robot's hex-stock cross-section looked at one by one | a 16-gon reads as hex at sheet size; four review rounds missed six round shafts. It skips short pieces (< 2× diameter: spacers, collars, nuts) and gives false "ROUND" on grooved hex stock (read the value) |
 | Hole visibility | `capvis.py` on every "holes closed" claim before fixing (no `CAPVIS_FLOOR`: the underside counts as seen; `CAPVIS_CLEAR` for clear panels): vis = share of 96 hemisphere rays escaping; 0 never seen, < 0.02 glimpsed, > 0.1 clearly visible | 7 of 10 flagged parts once had vis 0. It flags any deviation > 0.8 mm (not only holes) and is an upper bound (it looks into cavities too) |
-| Coplanar z-fighting | point-sampled (`zfight.py`: once on the CAD as the baseline, then on every result with that baseline; it prints only new pairs): samples on each part's faces, another part's same-facing face within 0.05 mm and 1.8°; keep only pairs visible from outside; pairs of 1–4 samples are a few mm² | plane-offset comparisons (`n·p`) gave three false claims of 1.5–3.3 mm real gaps; pre-existing CAD z-fights aren't yours to fix |
+| Coplanar z-fighting | point-sampled (`zfight.py`: once on the CAD as the baseline, then on every result with that baseline; it prints only new pairs): samples on each part's faces, another part's same-facing face within 0.05 mm and 1.8°; keep only pairs visible from outside; pairs of 1–4 samples are a few mm²; fix the rest in the finished piece file with `zf_nudge.py`, then run the check again | plane-offset comparisons (`n·p`) gave three false claims of 1.5–3.3 mm real gaps; pre-existing CAD z-fights aren't yours to fix |
 | Round holes | wall MID-points of every open round hole ≤ 0.35 mm p95 off the CAD | rim points lie in the face plane: a hole turned into a triangle scored ~0 |
 | Side counts | lathe sides vs the radius tier | |
 | Plate caps | cap AREA per height level vs the CAD | flaps spanning tooth gaps passed every boundary-distance and open-edge check |
@@ -61,6 +66,11 @@ Tools for settling claims fast: `tubevis.py` (highlight render of one part in th
 an object-id render of a full-robot view that names the object at given pixels (`pick.py`), a tinted render of a set
 of objects in the full view (to prove "the black cells are the library electronics"), thin-slab views (clip ± 12 mm
 around a plate) to see what fills a hole.
+
+**Exploded robots** (explode.py / explode_inst.py): run the per-part pairs and the checks on the piece level (the
+exploded CAD vs the run's pre-implode file: the names match), and the robot views on the final file. After a full run,
+`libcheck` and close-ups of every library swap from the same cameras in both files (decision_shot.py on each file): the
+place to judge orientation by features (lens, LEDs, terminals) rather than by colour alone.
 
 ## 3. Reviewer brief template
 
@@ -148,7 +158,10 @@ a sheet is clean. End with a count per severity and CLEAN / NOT CLEAN.
 `object_shots.py` renders every pair of the FINAL run's `pairs.json` from two opposite iso directions (CAD and result,
 the same tight ortho frame, ≥ 0.15 mm per pixel up to 3200 px, the result culled); `object_compose.py` labels them
 `O001 - <name> - view 1.jpg` (visible parts first, REVIEW in orange) + `index.csv`; JPEG q92 (PNG was 1.7 GB for 247
-parts). Filter exploded objects with empty meshes first (the script crashed on them). Make downscaled thumbnail sheets
+parts). Exploded parents with empty meshes are skipped now (the script crashed on them; 458 of 2,130 pairs on one
+robot). After a patch to a few parts: render just those with a `shots.json` holding only their entries (the `i`
+numbering is kept) into a temporary folder, copy the renders over, replace their rows in `meta.json` (the method label
+comes from `pairs_order.json` at render time) and rerun `object_compose.py`. Make downscaled thumbnail sheets
 (each image shrunk on its own first, `magick -define jpeg:size=600x340 X -thumbnail 300x170`, then `montage -tile 10x6`
 on the thumbnails, with an explicit font: without one, labels render as boxes; a montage of full-size images was
 OOM-killed)

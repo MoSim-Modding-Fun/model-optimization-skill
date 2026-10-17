@@ -15,6 +15,12 @@
 #   --slots 1      [SLOTS]          allow a second heavy job on the machine (2) when RAM allows
 #   --lock-name heavy [LOCK_NAME]   lock file ~/.cache/mosim-<name>.lock (e.g. "git" to serialise git in a shared repo)
 #   --timeout 1200 [TIMEOUT]        kill the job (and everything it started) after this many seconds (exit 124)
+#   [MIN_FREE=15] [MAX_SWAP=40]     start-gate floor (% of RAM left after the cap) and swap ceiling (%): raise /
+#                                   lower them to leave more room for other sessions (never below the defaults)
+#   [YIELD_TO=regex] [YIELD_MIN_MB=500]  the owner's priority session: the job does not start while a process whose
+#                                   command line matches (and uses >= YIELD_MIN_MB resident) runs, and is killed with
+#                                   exit 76 if one starts (Linux; environment only, so the pattern is never in the
+#                                   guard's own command line; the guard's ancestors are skipped)
 #
 # 1. Lock: ~/.cache/mosim-heavy.lock (+ .2 with --slots 2), shared with every robot session on the machine (the same
 #    files the older bash guard used, compatible on Linux). Waits up to 2 h, then exits 75.
@@ -26,7 +32,8 @@
 #    group at nice 15, killed when its tree's memory passes the cap.
 # 4. Watchdog every 2 s: kills the job if the system passes 90 % RAM, 60 % swap (Linux, macOS) or 97 % of the commit
 #    limit (Windows). Exit codes: the command's own, 75 = gave up waiting, 124 = timeout, 127 = command not found,
-#    137 = killed by the watchdog or its cap (on Windows also a job that failed after reaching its cap).
+#    137 = killed by the watchdog or its cap (on Windows also a job that failed after reaching its cap), 76 = killed to
+#    make room for a YIELD_TO process (rerun it later).
 # stdin is passed through. On Windows bare `python3`/`python` run the guard's own Python and bare `bash` is Git Bash
 # (not WSL); a .sh script runs through bash. Bound every loop that trusts a count read from a file: a runaway parser
 # killed an app once.
@@ -49,7 +56,11 @@ WAIT_S = 7200
 def parse(argv):
     o = {"blender": False, "lock": None, "mem": os.environ.get("MEM"), "cpu": os.environ.get("CPU"),
          "threads": os.environ.get("THREADS", "8"), "slots": int(os.environ.get("SLOTS", "1")),
-         "lock_name": os.environ.get("LOCK_NAME", "heavy"), "timeout": float(os.environ.get("TIMEOUT", "0"))}
+         "lock_name": os.environ.get("LOCK_NAME", "heavy"), "timeout": float(os.environ.get("TIMEOUT", "0")),
+         # stricter only: a lower floor or a higher swap ceiling than the defaults is ignored
+         "min_free": max(15.0, float(os.environ.get("MIN_FREE", "15"))),
+         "max_swap": min(40.0, float(os.environ.get("MAX_SWAP", "40"))),
+         "yield_to": os.environ.get("YIELD_TO") or None, "yield_min_mb": float(os.environ.get("YIELD_MIN_MB", "500"))}
     if os.environ.get("LOCK") in ("0", "1"):
         o["lock"] = os.environ["LOCK"] == "1"
     i = 0
@@ -136,15 +147,46 @@ def describe(m):
     return s + f", swap used {m['swap_used'] // 2 ** 20} MB"
 
 
-def wait_for_room(cap):
+def priority_running(pattern, min_mb):
+    """YIELD_TO: a process whose command line matches `pattern` and holds >= min_mb MB resident (Linux /proc), i.e. the
+    owner's priority session is busy. The guard's ancestors (the shell whose command holds the pattern) are skipped."""
+    if not pattern or not os.path.isdir("/proc"):
+        return None
+    import re
+    rx, page = re.compile(pattern), os.sysconf("SC_PAGE_SIZE")
+    skip, p = set(), os.getpid()
+    while p > 1 and p not in skip:
+        skip.add(p)
+        try:
+            p = int(open(f"/proc/{p}/stat").read().rsplit(")", 1)[1].split()[1])
+        except (OSError, ValueError, IndexError):
+            break
+    for d in os.listdir("/proc"):
+        if not d.isdigit() or int(d) in skip:
+            continue
+        try:
+            rss_mb = int(open(f"/proc/{d}/stat").read().rsplit(")", 1)[1].split()[21]) * page / 2 ** 20
+            if rss_mb < min_mb:
+                continue
+            cmd = open(f"/proc/{d}/cmdline", "rb").read().replace(b"\0", b" ").decode(errors="replace").strip()
+        except (OSError, ValueError, IndexError):
+            continue
+        if rx.search(cmd):
+            return f"pid {d} {cmd[:70]} ({rss_mb:.0f} MB)"
+    return None
+
+
+def wait_for_room(cap, o):
     t0, told = time.time(), False
     while True:
         m = sysmem.mem()
-        swap_ok = m["swap_total"] == 0 or m["swap_used"] <= 0.40 * m["swap_total"]
-        if m["available"] - cap >= 0.15 * m["total"] and swap_ok and sysmem.io_pressure() <= 50:
+        swap_ok = m["swap_total"] == 0 or m["swap_used"] <= o["max_swap"] / 100 * m["swap_total"]
+        busy = priority_running(o["yield_to"], o["yield_min_mb"])
+        if (m["available"] - cap >= o["min_free"] / 100 * m["total"] and swap_ok and sysmem.io_pressure() <= 50
+                and not busy):
             return
         if not told:
-            say(f"waiting ({describe(m)}, io {sysmem.io_pressure():.0f} %)")
+            say(f"waiting ({describe(m)}, io {sysmem.io_pressure():.0f} %" + (f"; priority process {busy}" if busy else "") + ")")
             told = True
         if time.time() - t0 > WAIT_S:
             say("gave up waiting for RAM after 2 h")
@@ -293,7 +335,7 @@ def main():
         for sig in (signal.SIGTERM, signal.SIGHUP):
             signal.signal(sig, interrupt)
     lock = take_lock(o["lock_name"], o["slots"]) if o["lock"] else None  # noqa: F841 (held until exit)
-    wait_for_room(cap)
+    wait_for_room(cap, o)
     job, unit, scoped = None, None, False
     if WIN:
         cmd = win_resolve(cmd)
@@ -343,7 +385,7 @@ def main():
         except OSError:
             pass
 
-    killed, timed_out, t_start = False, False, time.time()
+    killed, timed_out, yielded, t_start = False, False, False, time.time()
     try:
         while proc.poll() is None:
             if o["timeout"] and time.time() - t_start > o["timeout"]:
@@ -354,6 +396,11 @@ def main():
             if m:
                 kill(f"the system is out of memory ({describe(m)})")
                 killed = True
+                break
+            busy = priority_running(o["yield_to"], o["yield_min_mb"])
+            if busy:
+                kill(f"making room for the priority process {busy} (YIELD_TO)")
+                yielded = True
                 break
             if not (use_job or scoped or WIN) and sysmem.tree_rss(proc.pid) > cap:
                 kill(f"the job's memory passed its {o['mem']} cap")
@@ -376,6 +423,8 @@ def main():
                 pass
     if timed_out:
         return 124
+    if yielded:
+        return 76
     if killed or rc in (-9, 137):
         return 137
     if WIN:

@@ -91,6 +91,8 @@ Three starting points:
   material); measure the spec from the CAD (spoke count by angular FFT, ring/hub radii from radial histograms or ray
   parity of the solid fraction per radius at the mid-width plane, cast from the mid-plane, not from outside).
 - **`flex_widen_asset.py`**: a straight flex wheel at another width = an existing width stretched along its axis.
+  `compliant_widen_asset.py` does the same for a compliant wheel file with several colour variants (every asset object
+  scaled once per mesh, names "1in WD" -> "2in WD", the robot's CAD wheel as HP, previews re-rendered).
 - Pocketed wheels (windows from both faces with a mid-width web) fail the mid-section builders: use the stacked-section
   remodel (`remodel.py`) with a live Smooth by Angle + WeightedNormal.
 - **Vectored / roller wheels** (`vectored_asset.py`): plain solid hub (only where a shaft fills the bore), rollers as
@@ -118,6 +120,15 @@ Three starting points:
   holes into triangles and blotched the front). Build into the library path itself so the RobotMaterials link stays
   relative, then `gapcheck.py` (0 px). Real colours from product photos
   ("CAD yellow" is meaningless).
+
+- **Procedural electronics from the CAD itself** (an encoder, a switch: `tbe_asset.py`, `din_switch_asset.py` on
+  `elec_asset_lib.py`): `part_extract.py` puts the pieces in the part's own frame (`FRAME=normals` for boxes: a clip or
+  terminal block skews PCA axes); outlines per height band come from rasterised silhouettes (section loops of hollow
+  shells chain wrongly), closed so touching pieces merge, smoothed, then Douglas-Peucker; stacked prisms are joined and
+  cut with EXACT Booleans in `material_mode` TRANSFER (cutter faces keep their own finish: a white socket floor in a black
+  pocket); openings come from a section just inside the face (a jack's black interior projects edge-on). Then
+  `asset_prune.py`, `gapcheck.py` (0 px) and `asset_finalize.py`. Budget like the library neighbours: CTRE-size boxes
+  170–900 tris, switches 550–600; render it next to its CAD from 4 sides after every try.
 
 ## 5. Motors, batteries, signal lights and small electronics
 

@@ -62,7 +62,8 @@ new assets: [building-assets.md](building-assets.md).
   match by size **measured in the mesh's own frame** (world bboxes of rotated objects read up to √2 too big): roboRIO
   146 × 143 × 35 mm, Pigeon 2.0 47 × 45 × 13, CANivore 57 × 39 × 19, Ethernet switch 107 × 101 × 27, Limelight 4
   80.1 × 48.1 × 32.6 (the LL3 is 29.5 mm thick; Onshape names the LL4 "Minimal"), battery 180 × 76 × 167, signal
-  lights 57 × 57 × 82 (domed) and 45 × 45 × 74 (tapered amber lens). A 29.5 mm Limelight is a 3, 3G or 3A (the 3G case):
+  lights 57 × 57 × 82 (domed) and 45 × 45 × 74 (tapered amber lens), REV Through Bore Encoder 64 × 42 × 16 (with its
+  mounting ears), a 5-port DIN-rail Ethernet switch 120 × 79 × 26 (not the Brainbox: different product). A 29.5 mm Limelight is a 3, 3G or 3A (the 3G case):
   the 3A is light grey with no LED bores on its front (only the lens), the 3 / 3G black with green LEDs: decide by colour
   and front, not by the fit (a black LL3 fitted the grey 3A at 0.96 mm).
 - A library model of a different product is not a match even if it fits under the limit (a signal light accepted at
@@ -167,3 +168,14 @@ bores), and check that no CAD piece pokes through a library body (motor connecto
 - Some Onshape robots carry a vendor "Simplified PDH" (4.9k tris) lighter than the library PDH (7.4k): library by
   default (`LIB_KEEP_HEAVIER`), the A/B shown at the end.
 - `Limelight 3A`: built from the 3G case by `limelight3a_asset.py` (grey, no LEDs, blue status LED, 672 tris).
+- `REV-11-1271 (Through Bore Encoder)` (886 tris, black housing, white 1/2 in hex insert, JST socket face; frame: origin
+  on the bore axis at the back face, z toward the ear bosses): `tbe_asset.py` from REV's CAD. Swap it with
+  `LIB_ASSEMBLIES` fitted on the visible shells only (housing, back cover, hex insert, connector; 1.0 mm on six encoders);
+  the internals sit inside the housing's box and go to REVIEW with it.
+- `8653T11 (5-Port DIN-Rail Ethernet Switch)` (545 tris, McMaster's plastic-housing switch, SW-005 style):
+  `din_switch_asset.py`. Single mesh in the CAD: a `LIB_RULES` entry (fit 0.3 mm).
+- `2.25in (2.25in OD 2in WD Compliant Wheels, 16-sided)`: the 1 in 16-sided wheel stretched to 2 in, both colour variants
+  (`compliant_widen_asset.py`; a no-context judge called it CLOSE ENOUGH: same OD, width and 6-window pattern; its hub is
+  solid where the CAD has a hex bore, which the shaft fills).
+- `MK4n Swerve Module` fits MK4n modules built with REV Through Bore encoder columns (median 0.12–0.18 mm per corner);
+  the encoder stays a separate library encoder. Library vs per-piece came out equal (18.3k vs 17.8–18.5k per module).

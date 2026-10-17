@@ -19,7 +19,7 @@ TK=<skill>/toolkit; S=<skill>/scripts; W="<robot>/_work"; SRC="<robot>/<source>.
 export ROBOT=<name>                                                    # robots/r<name>.py
 # 0. prep: orig_names.json, tf_src.json, cad_mats.json, weld, explode cfg.EXPLODE -> $W/exploded.blend
 "$S/bl.sh" "$SRC" --python "$TK/prep.py" -- "$W"
-# 1. visibility (~1–5 min)
+# 1. visibility (~1–5 min; absolute paths: a relative output path fails under the guard)
 "$S/bl.sh" "$W/exploded.blend" --python "$TK/vis.py" -- "$W/vis.json" 80 1400
 # 2. simplify (~10–45 min; planning, library fits and hole ray tests dominate)
 "$S/bl.sh" "$W/exploded.blend" --python "$TK/pipeline.py" -- "$W/vis.json" "$W/run1/out.blend" "$W/run1/report.json"
@@ -134,6 +134,8 @@ names, parents, transforms and collections never change.
 | `is_tube`, `is_chain`, `is_belt` | Detection hooks. `TUBE_SIZES_MM` adds stock sizes (metric tubes). |
 | `FORCE_METHOD`, `DECIMATE_RATIO`, `BUILDERS` | Per-part overrides (mesh datablock name first); `BUILDERS = {method: fn(part, mesh)}` for custom builders (pinned Collapse, plugged blocks, chain loops, remodels). |
 | `EXPLODE` | Merged sub-assembly part names split into pieces before the pipeline. |
+| `EXPLODE_ALL` | `explode_inst.py`: explode every mesh object (default True there; False = only `EXPLODE` parts). |
+| `MODULE_FIT` | `module_fit.py`: library swerve modules onto corner groups with no module empties (lib, types, corners, frame_top_z, vendor regex, skip_target, skip). |
 | `PRE_WELD_M`, `MERGE_DIST` | Weld (1e-6 for glTF soup); Merge by Distance (≤ ~5e-5). |
 | `MESH_PREP` | `{mesh name: fn(me)}` edits before planning (flatten a logo cover, recolour bearings to their majority finish). |
 | `LATHE_REMODEL`, `SHADE_LATHE`, `LATHE_MATERIAL_RINGS`, `LATHE_TOL_MM`, `LATHE_INSET`, `LATHE_DISSOLVE_DEG` | Lathe behaviour: remodel; shading stack on lathes; colour rings (a callable: off for bearings); per-part profile tolerance; pull end faces in where they sit flush; dissolve angle. |
@@ -155,10 +157,10 @@ names, parents, transforms and collections never change.
 | Group | Scripts |
 |---|---|
 | Core | `pipeline.py`, `vis.py`, `geo.py`, `build.py`, `align.py`, `shading.py`, `libcombo.py`, `paths.py` |
-| Prep / big CADs | `prep.py`, `explode.py`, `implode.py`, `phase3.py`, `cleanup/` (Phase 1), `step_import.py`, `step_build.py`, `fbx_import.py`, `split_extract.py` |
-| Special builders | `chainloop.py`, `chain_join.py`, `majlathe.py` (majority lathe: cups kept with their boss), `remodel.py`, `clean_remodel.py`, `patch_final.py` (edit a finished file: Collapse ratios, per-piece hex, plug + stepped) |
-| Library and assets | `wheel_asset_cad.py`, `wheel_asset.py`, `flex_widen_asset.py`, `vectored_asset.py`, `omni_asset.py`, `cam_asset.py`, `cam_finish.py`, `limelight2_asset.py`, `limelight3g_asset.py`, `limelight3a_asset.py`, `fan_asset.py`, `kraken_cap_asset.py`, `asset_prune.py`, `gapcheck.py`, `render_collection.py`, `swerve_*.py`, `mk4n_*.py`, `mk5n_*.py`, `x2i_*.py`, `kit_*.py` |
+| Prep / big CADs | `prep.py`, `explode.py`, `explode_inst.py` (every copy merged into one mesh: split + share copies by shape), `implode.py` (its join cache keys on piece meshes AND matrices), `phase3.py`, `cleanup/` (Phase 1), `glb_import.py`, `zup_root.py` (rootless +Y-up work copy and restore), `step_import.py`, `step_build.py`, `fbx_import.py`, `split_extract.py` |
+| Special builders | `chainloop.py`, `chain_join.py`, `majlathe.py` (majority lathe: cups kept with their boss), `remodel.py`, `clean_remodel.py`, `patch_final.py` (edit a finished file: Collapse ratios, per-piece hex, plug + stepped), `patch_slab.py` (`remodel.slab_union` rebuilds of named pieces patched into a finished run) |
+| Library and assets | `module_fit.py` (library modules without module empties), `part_extract.py`, `elec_asset_lib.py` (silhouette outlines, prisms, TRANSFER Booleans), `tbe_asset.py` (REV Through Bore Encoder), `din_switch_asset.py` (DIN-rail Ethernet switch), `asset_finalize.py` (slots, metadata, preview, write into the library, refuses to overwrite), `compliant_widen_asset.py` (every colour variant of a compliant wheel at another width), `wheel_asset_cad.py`, `wheel_asset.py`, `flex_widen_asset.py`, `vectored_asset.py`, `omni_asset.py`, `cam_asset.py`, `cam_finish.py`, `limelight2_asset.py`, `limelight3g_asset.py`, `limelight3a_asset.py`, `fan_asset.py`, `kraken_cap_asset.py`, `asset_prune.py`, `gapcheck.py`, `render_collection.py`, `swerve_*.py`, `mk4n_*.py`, `mk5n_*.py`, `x2i_*.py`, `kit_*.py` |
 | Drop-ins | `game_restore.py`, `fbx_dropin.py`, `game_remake.py`, `fbx_normals_check.py`, `unity_probe/` |
-| QA | `render_pairs.py`, `make_sheets.py`, `sheets.py`, `compare.py`, `verify.py`, `tfcheck.py`, `report.py`, `rundiff.py`, `libcheck.py`, `hexcheck.py`, `capvis.py`, `tubevis.py`, `flip_backfacing.py`, `pick.py`, `part_shots.py`, `context_shots.py`, `decision_shot.py`, `object_shots.py`, `object_compose.py`, `snap_state.py` (diff two saves), `finalize_mats.py`, `zfight.py` (point-sampled coplanar overlap vs a CAD baseline) |
+| QA | `render_pairs.py`, `rerender_pairs.py` (AFTER tiles of a few pairs after a patch), `review_sync.py` (REVIEW status from the file into report.json before the sheets), `make_sheets.py`, `sheets.py`, `compare.py`, `verify.py`, `tfcheck.py`, `report.py`, `rundiff.py`, `libcheck.py`, `hexcheck.py`, `capvis.py`, `tubevis.py`, `flip_backfacing.py`, `pick.py`, `part_shots.py`, `context_shots.py`, `decision_shot.py`, `object_shots.py`, `object_compose.py`, `snap_state.py` (diff two saves), `finalize_mats.py`, `zfight.py` (point-sampled coplanar overlap vs a CAD baseline), `zf_nudge.py` (fix its pairs in the finished piece file: coplanar faces 0.15 mm in, or a library object moved off the face) |
 
 Each script's header comment gives its usage line; read it before running a script you haven't used.

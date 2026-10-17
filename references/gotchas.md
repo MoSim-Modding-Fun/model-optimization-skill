@@ -35,6 +35,12 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
 - **Count every motor** in the CAD and confirm each got a library swap (multi-piece motors are easy to miss).
 - **Bodies can be missing from an export**: compare a part's size with its name.
 - `vis.py` encodes object ids in 12 bits: more than 4,095 mesh objects alias silently.
+- **Belts named only by part number** (custom HTD belts, turntable belts with a pinion tail) skip `is_belt` and get the
+  plate rebuild with every tooth (1.3–4.4k tris each). After run 1 list the dark loops 9 / 15 mm thick (or whatever the
+  belt widths are), look at them, and add their part names to `is_belt`.
+- **Anchors by local `dimensions`** miss pieces that sit at an angle in their own mesh (a 75.6 mm motor body read 66 mm:
+  a `> 70 mm` anchor test found none, and the multi-piece swap silently never ran). Anchor by face count or PCA extent,
+  and check that every `LIB_ASSEMBLIES` label appears in the pipeline log.
 
 ## 2. Visibility and holes
 
@@ -65,6 +71,28 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
   stack; a decimated part and a plate rebuild can disagree on the same holes.
 - **Countersunk and king-pin holes** fool the "bolt in it" ray test (rays start at 0.4 × the wide countersink rim):
   `DECIMATE_KEEP_HOLES` per part.
+- **Rows of open 4–5 mm holes on big decimated sheets** (hopper walls, an intake hood) were plugged and nobody saw it on
+  the per-part sheets: at 256 px the holes are a pixel. The whole-robot views showed the dot rows missing. Compare the
+  robot views for hole rows on every large sheet-metal part, then `DECIMATE_KEEP_HOLES` per part (`"all"`).
+- **Lathes drop holes through the side of a round part**: a 565 mm thin band lost 32 open 7 mm T-notches, and a
+  pocketed ring two open 19 mm holes. Band: `"decimate"` with its holes kept and a pinned ratio; 0.15 (1.6k tris) turned
+  the T-notches into funnels with shading streaks, 0.30 (3.1k) kept them. Ring: `"decimate"` with `"all"` holes at
+  0.25 (2.1k; 0.40 looked the same at 3.4k). Look at notches and pockets in a close-up before pinning a ratio.
+- **`remodel.slab_union` is for walls of one thickness**: on a ring with 5 mm pockets in a 6.35 mm plate it kept only the
+  1.3 mm web (rim, ribs and bosses gone, the countersunk screws floating 5 mm above it). Its `err_mm` (p95 CAD→slab,
+  slab→CAD) said so, and so did every other value above ~0.5 mm: 5.07 / 1.27 there; 3.17 / 3.17 on a plate whose 6.3
+  mm ring and spokes in a 3.1 mm frame came out all 3.2 mm (a later review round found it); 1.27 / 1.27 on a floor
+  whose underside recess was filled. Exact slabs read 0.01 (mitred tubes). `analyse_stepped` returning None (not a
+  stepped plate) is the cue for Collapse instead: 0.25 with every hole kept both thicknesses and round small holes.
+- **`"sectioned"` is for shafts, not a gear on a stub**: its axis came from PCA, which put it in the gear's plane (a
+  tilted stack of 15 slabs, bigger than the part; fixed: the best revolve-score axis now), and on the right axis it
+  read the gear as a ring with a wide bore (844 tris vs the CAD's 804). A part under ~1k tris whose rebuild is no
+  lighter stays as the CAD (`"keep"`).
+- **Flat sheets whose plate rebuild is rejected for open edges**: Collapse at its automatic target turned their 4–5 mm
+  holes into diamonds, and `DECIMATE_KEEP_HOLES` `"all"` left a 571 mm disc at its CAD count (17.3k).
+  `remodel.slab_union` gave 2.0–2.3k tris with every hole as a hexagon, but at one thickness only (the `slab_union`
+  item above). A pinned `DECIMATE_RATIO` of 0.25 with `"all"` holes kept a two-thickness plate's holes round at 1.9k.
+  Check the report's tris after any keep-holes change.
 
 ## 3. Lathes and round parts
 
@@ -132,6 +160,11 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
   until `TUBE_THROUGH_TEST` (rays must cross the tube). Measure pocket depth before calling a pattern engraved: 2.4–6.5 mm
   pockets are visible features.
 - A bent C-channel passes the tube bbox test: exclude it.
+- **Mitred box-tube ends** (no `TUBE_MITRED`): the tube rebuild ran the side walls to full height while the top wall
+  stopped short (an open U-channel end), and the mirrored copy failed the size test (the mitre widens its bbox) and was
+  decimated to a plain box without its holes. `remodel.slab_union` through `cfg.BUILDERS` rebuilt all four as wall
+  slabs with the mitre and every hole (0.01 mm, 250–530 tris). **`FORCE_METHOD` does not beat `is_tube`** (the tube
+  test runs first): return False from `is_tube` for those meshes too.
 
 ## 6. Plates
 
@@ -196,6 +229,17 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
 - **8-sided parts stay faceted under SBA 30°** (45° corners): intended by the side-count rule; reviewers flag it.
 - **Z-fighting comes from flush contacts the rebuild makes exact** (bores flush with shaft ends, bearing faces on
   plates, inserts in windows): default to a 0.15–0.3 mm inset or sink. Check claims by measuring both files.
+- **An inset can land exactly on the neighbour's simplified face**: a bearing pulled in 0.15 mm met a plate rebuild
+  whose top had dropped the CAD's 0.15 mm boss level, and heat-set inserts met decimated plates the same way; still
+  coplanar after the fix. `LATHE_INSET` also applies to every lathe of the part name: on a 0.68 mm washer a 0.3 mm inset
+  left 0.19 mm, and its face then met the nut's stub. Rerun `zfight.py` after every inset change, and fix the finished
+  piece file with `zf_nudge.py` (moves the smaller part's coplanar face 0.15 mm in, deterministic) rather than a rerun
+  that changes other Collapse results. One pass took 55 new pairs to 5 slivers.
+- **Library meets library by fit coincidence**: 3 of 8 motors on library swerve modules had their top flush with a
+  module face (the CAD had no overlap); the tops tilt ~0.15° from the fit, so a 0.15 mm move left part of one disc
+  coplanar: 0.3 mm. Check the motor's other end: moving one up put its shaft end flush with a pinion.
+- **`zfight.py` pairs of 1–3 samples change from run to run** (random samples): confirm with `zf_nudge.py`'s hit count
+  or a 3000–6000 sample probe; edge slivers of a few mm² between stacked plates are not worth a fix.
 - **Unity culls back faces; Blender's renders don't**: QA "after" renders with culling.
 - **Unity drops normals** unless the model's Normals import setting is "Import".
 
@@ -242,6 +286,19 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
   centre it by the libcheck face offsets, 0.3 mm short of the face it sits on.
 - **Library meshes are shared**: a shift for some instances only (motors whose front boss lies in a module plate) goes on
   a mesh copy for those objects; object transforms must stay equal to the CAD (tfcheck).
+- **A fit just over the limit on every copy** (Vortex + SPARK Flex: 3.65–3.74 mm on all 15 motors of one CAD, limit
+  3.5) is a systematic difference between the CAD and the asset, not 15 bad poses: raise `max_mm` for that label and
+  check orientation by renders; the pieces were otherwise kept as heavy CAD.
+- **The library Limelight 3's front has no green LEDs** (a lens and two LED holes in black), so in a render it reads like
+  a camera's back: a session "fixed" two correctly placed cameras with a flip and had to undo it. Judge orientation by
+  the lens and LED-hole side against the CAD's lens side, from the same camera in both files. To undo a flip, take the
+  meshes from a run without it (same fit, same object transforms); a 180° turn about PCA axes left them tilted.
+- **`LIB_CAD_COLOURS` only applies to `LIB_RULES` swaps**, not `LIB_ASSEMBLIES`. A wheel with a separate hub insert:
+  a `LIB_RULES` entry on the part name (the size gate, 0.6–1.6 × the asset's diagonal, keeps the small insert out) and
+  the insert goes to REVIEW through the swapped body's box.
+- **libcheck compares the asset with the largest CAD piece only**: a multi-piece swap shows the parts the target piece
+  lacks as one-sided face offsets (a docked controller +13.4 mm, an encoder's back cover +4.8 mm). Read those against
+  the assembly before flipping anything; a moved colour centroid is the stronger hint.
 
 ## 12. Files, matrices and Blender API
 
@@ -264,3 +321,10 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
   and were OOM-killed. Shrink each image on its own first (`magick -define jpeg:size=600x340 X -thumbnail 300x170`),
   then montage the thumbnails.
 - **`MemoryMax` counts touched pages**: test the guard with memory that is actually written.
+- **Pass absolute paths to render scripts** (`vis.py`): with a relative output path the first render failed under the
+  guard ("cannot save vis.json.tmp.png") and Blender still exited 0.
+- **Boolean modifier `material_mode` defaults to INDEX**: the operand's faces take the target's slot of the same index,
+  so unions in an asset build all came out in the case colour. Use `'TRANSFER'`. Call `view_layer.update()` (and
+  `depsgraph.update()`) before evaluating a Boolean on an object created in the same script.
+- **Blender 5 keeps names over 63 bytes** (77-byte glTF node names arrived whole); older notes about 63-byte cuts apply
+  to the FBX importer.

@@ -59,9 +59,14 @@ if mode == "before":
         P = []
         for n in e["before"]:
             o = sc.objects[n]
+            if not len(o.data.vertices):  # an exploded parent left empty (its pieces have their own entries)
+                continue
             v = np.empty(len(o.data.vertices) * 3); o.data.vertices.foreach_get("co", v); v = v.reshape(-1, 3)
             M = np.array(o.matrix_world)
             P.append(v @ M[:3, :3].T + M[:3, 3])
+        if not P:
+            print("SHOT skip (no CAD vertices)", i, e["part"], flush=True)
+            continue
         P = np.concatenate(P)
         frames = []
         for d in VIEWS:
@@ -83,7 +88,8 @@ else:
     shots = json.load(open(SJ))
 dg = bpy.context.evaluated_depsgraph_get()
 meta = []
-for s, e in zip(shots, order):
+for s in shots:
+    e = order[s["i"]]
     assert s["key"] == e["key"]
     show = set(e[mode])
     if mode == "after":  # exploded pieces were joined back into their object by implode.py

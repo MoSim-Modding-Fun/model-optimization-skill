@@ -3545,13 +3545,19 @@ def build_sphere(name, centre, radius, segs=None, rings=None):
 # ---------------------------------------------------------------- shafts with hex and round sections
 
 def build_sectioned(name, me, hex_ratio=0.99, min_len_mm=1.5):
-    """Shaft whose outline changes along its axis (hex body + round journals, round shaft + hex end). Each section is
-    its own closed prism: an exact hexagon fitted to that section's outline, or an n-gon cylinder (owner's side tiers),
-    keeping the bore where the section has one. Returns the joined mesh (no materials) or None."""
+    """Shaft whose outline changes along its axis (hex body + round journals, round shaft + hex end, gear on a hex
+    stub). Each section is its own closed prism: an exact hexagon fitted to that section's outline, or an n-gon cylinder
+    (owner's side tiers), keeping the bore where the section has one. Returns the joined mesh (no materials) or None."""
     co, tri, _ = geo.mesh_arrays(me)
     pts, _ = geo.sample_surface(co, tri, 40000)
-    _, ax = geo.pca_axes(pts)
-    d = geo.snap_axis(ax[0])
+    # the candidate axis with the best revolve score, not PCA's longest: a gear on a short shaft spreads widest across
+    # the shaft, and the PCA axis in the gear plane gave a tilted stack of slabs bigger than the part
+    best = (9.0, None)
+    for d_ in geo.candidate_axes(pts):
+        s_, _ = geo.revolve_score(pts, d_)
+        if s_ < best[0]:
+            best = (s_, d_)
+    d = geo.snap_axis(best[1] if best[1] is not None else geo.pca_axes(pts)[1][0])
     u, w = geo.perp_basis(d)
     allp = np.vstack([pts, co])
     pu, pw = allp @ u, allp @ w
