@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.blend1
+
+# outputs some scripts write next to the file they ran on
+pick_*.png

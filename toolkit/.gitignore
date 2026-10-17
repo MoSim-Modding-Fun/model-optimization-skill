@@ -1,0 +1,10 @@
+# outputs written next to the scripts by older usage; the toolkit itself ships no .blend/.png
+pairs/
+sheets/
+cmp/
+tv/
+*.blend
+*.blend1
+*.fbx
+*.png
+__pycache__/
