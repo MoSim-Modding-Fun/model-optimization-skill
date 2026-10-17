@@ -42,8 +42,9 @@ one rerun or review round. Tool behaviour is described as of the current toolkit
 - **Holes behind moving groups stay**: occluders are the `"main"` group plus the part's own group. Put fixed roller sets
   in "main" only if they truly don't move.
 - **Clear panels** must be a see-through group, or parts behind them go to REVIEW and visible holes get dropped.
-- **The floor occludes** hole tests by default; climbing or tipping robots may want `NO_FLOOR_OCCLUSION`. Helper cubes
-  below the wheels drop the floor: set `FLOOR_Z`.
+- **The underside is seen** (owner default, `NO_FLOOR_ALL = True`): no floor occluder in hole tests. Holes on rails'
+  undersides were dropped on earlier robots and later wanted. If a floor is used, helper cubes below the wheels drop
+  it: set `FLOOR_Z`.
 - **Hole plugging is the main source of see-through spots** on decimated parts:
   - pins and bosses have two round rims like a hole; plugging one deleted its wall (only plug when the wall faces its
     axis);

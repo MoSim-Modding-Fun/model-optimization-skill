@@ -65,7 +65,8 @@ new assets: [building-assets.md](building-assets.md).
   80.1 × 48.1 × 32.6 (the LL3 is 29.5 mm thick; Onshape names the LL4 "Minimal"), battery 180 × 76 × 167, signal
   lights 57 × 57 × 82 (domed) and 45 × 45 × 74 (tapered amber lens).
 - A library model of a different product is not a match even if it fits under the limit (a signal light accepted at
-  4.2 mm was the wrong product): compare sizes, and ask.
+  4.2 mm was the wrong product): compare sizes; a different product gets its own asset at the library's fidelity
+  (show the A/B at the end).
 - Never force a library model from another robot's config (one robot's "Limelight 3" setting was copied to a robot
   whose part was a Limelight 4): let the fit choose, then check.
 - Wheels: same OD **and** width (vendor may differ), **and** the look must match: render CAD vs library in neutral

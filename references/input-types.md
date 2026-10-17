@@ -29,16 +29,17 @@ at intake. `$TK` below is the skill's `toolkit/` folder.
   empty). Generic names ("Part 40") cover unrelated parts in different sub-assemblies: key every override on the mesh
   datablock name. SolidWorks: `Part-<n>` style names and `defaultplastic.<n>` materials whose colour lives only in the
   Principled BSDF; treat those colours as uninformative.
-- **Helpers.** Onshape "Origin / Reference Cube" markers hang 25–110 mm below the wheels and drop the floor; every
-  underside hole then reads as visible. Set `FLOOR_Z` to the wheel contact plane and move the cubes to a REVIEW
-  collection.
+- **Helpers.** Onshape "Origin / Reference Cube" markers hang 25–110 mm below the wheels: move them to a REVIEW
+  collection (and, if a floor occluder is used at all, set `FLOOR_Z` to the wheel contact plane; by default the
+  underside is seen and there is no floor).
 - **The owner's own simplified parts** carry Decimate → Smooth by Angle → WeightedNormal; keep them.
 - **Draco-compressed glTF** decodes fine in Blender's importer; check once that flat faces are exactly planar before
   worrying about quantisation (they were).
 
 ## 2. `.glb` / `.gltf` you import yourself
 
-Only when asked ("Import it into a .blend") or for a small vendor file handed to you. Import with the default glTF
+When nothing provided is a `.blend`, import it yourself (owner, 2026-10-16); if the owner says they will import, wait.
+Import with the default glTF
 importer from an empty scene (`bpy.ops.wm.read_factory_settings(use_empty=True)` first), through `bl.sh` with a raised
 `MEM` (a 250 MB glb needed ~6 GB; say so), save compressed, then check the up axis and the floor. ~30–60 s per 100 MB.
 Set `save_version = 0` or check the output before rerunning, to avoid stray `.blend1` files.
@@ -62,7 +63,7 @@ MEM=6G bl.sh --factory-startup --python $TK/step_build.py -- "<robot>/_work/impo
   their assembly's name.
 - STEP colour names lie ("ABS (White)" on a red colour): materials are named by the sRGB value.
 - Check for bodies missing from the export: compare each part's size with its name (a "3.000in" flex wheel measured
-  38 mm: only the fluted hub was exported). Ask.
+  38 mm: only the fluted hub was exported). Keep what the CAD shows and note it in the summary.
 - OCP 8 quirks: `TDF_LabelSequence` is `OCP.collections.Sequence_TDF_Label`; an XCAF document saved as XBF reopened
   empty (re-read the STEP); `node.LocalTrsf` needs `.Transformation()`.
 
@@ -71,8 +72,8 @@ MEM=6G bl.sh --factory-startup --python $TK/step_build.py -- "<robot>/_work/impo
 "Unless specifically told, assume it is not being replaced directly in unity." Treat the game's FBX like any other
 source: import it with full names (`$TK/fbx_import.py`; the stock importer cuts names over 63 bytes to 55 chars + a
 hash), simplify, deliver `<name> - simplified.blend`. New objects, library colours and dropped material slots are all
-fine. Modifier stacks don't survive an FBX, so "keep the owner's simplified parts" can't be detected: ask if belts or
-chains already look like ~260-tri loops.
+fine. Modifier stacks don't survive an FBX, so the owner's simplified parts can't be detected by their modifiers:
+treat parts that already look simplified (belts or chains as ~260-tri loops) as already light.
 
 ## 5. The game's own FBX as a drop-in (only when told)
 
@@ -110,7 +111,7 @@ Some Onshape robots come in standing on their side (wheels at y = 0). The pipeli
 views): run everything on a work copy where ONLY the root empty is rotated -90° about X, restore the root's exact
 rotation (mode and quaternion) in the deliverable, and compare every object's world matrix with the ORIGINAL import
 (`$TK/tfcheck.py`, 0.0 deviation). Objects the run adds must sit under the root. `VIEWS` and `LIB_NUDGE_MM` are in the
-work frame. Ask which orientation to deliver.
+work frame. Deliver in the source's orientation.
 
 ## 7. Very large CADs: batched cleanup first
 

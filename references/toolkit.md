@@ -141,7 +141,7 @@ names, parents, transforms and collections never change.
 | `PLATE_TOL`, `PLATE_HOLE_SIDES` | Plate outline tolerance per mesh/part; side counts for small plate holes. |
 | `DECIMATE_KEEP_HOLES`, `DECIMATE_MAX_TARGET`, `DECIMATE_LIGHT_FRAC`, `FLUSH_BORE_KEEP_STEPS` | Decimate fallbacks keep visible holes (`"all"` or a set); Collapse target cap; "already light" share; keep counterbore steps on reopened bores (default off: it inflated wheels 2–4×). |
 | `TUBE_MITRED`, `TUBE_THROUGH_TEST`, `TUBE_FILL_IRREGULAR` | Mitred tubes as slabs; cut a wall loop only if rays cross the tube (engraved truss pockets stay solid); fill engraved script. |
-| `NO_FLOOR_OCCLUSION`, `FLOOR_Z`, `HEAD_CYL_NO_OCCLUDE` | Underside holes visible; the floor height (helper cubes below the wheels); rivet-head rebuilds don't occlude. |
+| `NO_FLOOR_ALL`, `NO_FLOOR_OCCLUSION`, `FLOOR_Z`, `HEAD_CYL_NO_OCCLUDE` | No floor occluder at all (template default True: the underside is seen); per-part version; the floor height (helper cubes below the wheels) when a floor is used; rivet-head rebuilds don't occlude. |
 | `VIS_DENSE` | Hole visibility from the centre + 6 rim points (slots seen only straight-on). |
 | `EXTRA_DUPLICATES`, `EXTRA_HIDDEN`, `EXTRA_BARELY`, `REVIEW_AFTER` | Objects forced into REVIEW collections (coincident twins with different meshes; owner requests; parts the simplification itself hides). |
 | `SHADE_EXTRA`, `SHADE_SKIP`, `DISSOLVE_DEG_PARTS` | Force/skip the shading stack; per-part final dissolve angle. `SHADE_SKIP` on smooth decimated parts makes them fully smooth (worse): lower the Smooth by Angle angle instead (20° when bend facets are 21–23°). |

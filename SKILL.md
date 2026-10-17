@@ -7,8 +7,8 @@ description: Turn a CAD robot (Onshape/SolidWorks .glb/.gltf, STEP, an imported 
 
 Goal: make a CAD robot as cheap to render in Unity as possible **without visible quality loss**, in the house style
 (the owner's rulings). A job takes hours: inventory, 3–10 pipeline runs, several review rounds. Almost every expensive
-mistake in past jobs came from assuming instead of asking, from widening or narrowing what was asked, or from a process
-that ran out of memory.
+mistake in past jobs came from guessing where a measurement or a check would have settled it, from widening or
+narrowing what was asked, or from a process that ran out of memory.
 
 `$SKILL` below is this skill's folder (the directory holding this file); `$TK` = `$SKILL/toolkit` (the Blender
 scripts), `$S` = `$SKILL/scripts` (the resource guard). Read the reference files when a step points to them; don't read
@@ -16,15 +16,18 @@ them all up front.
 
 ## Ground rules
 
-1. **Ask at intake, default afterwards.** Before any heavy work, ask every question whose answer you don't know
-   (references/intake.md); don't fill gaps with guesses. After the plan, keep going: look trade-offs get the
-   documented default and are shown all together at the end, with the triangle cost of each option and images of each.
-   Asked at the moment, never defaulted: anything irreversible or outward-facing (deleting, writing into a Unity project
-   or a repo, committing, pushing, downloading, waking other sessions), a discovery that changes the whole plan, and a
+1. **Assume what the files and house rules settle; ask only for permissions and real blockers.** The owner's rule:
+   "This should not be asked it should be assumed" (source, import, outputs, budget, moving and clear parts, the
+   underside, kept features, swerve modules, delivery: references/intake.md §2 says how to decide each). State the
+   assumptions in the plan, keep going, list them again at the end. Look trade-offs get the documented default and are
+   shown all together at the end, with the triangle cost of each option and images of each. Asked at the moment:
+   anything irreversible or outward-facing (deleting, writing into a Unity project or a repo you don't own, committing,
+   pushing, downloading), a real blocker (no usable source; a request with two readings that make different jobs), and a
    request you think is wrong (say so plainly first).
 2. **Do exactly what was asked.** "Every X" means every X; "a cap for this motor" doesn't mean every motor.
 3. **Never modify the source file.** Work on copies; outputs go next to it. If the owner edited a previous output: back
-   it up, diff it against your last delivery, ask about anything you can't explain, never restore what they removed.
+   it up, diff it against your last delivery, keep their changes (they are on purpose) and never restore what they
+   removed.
 4. **Never delete parts.** Hidden, duplicate, barely visible and library-replaced parts go into `REVIEW - …`
    collections for the owner's review.
 5. **Guard every process and keep RAM free.** Blender, Python helpers, big greps, parsers, Unity: all through
@@ -45,31 +48,30 @@ them all up front.
   your `r<name>.py` robot configs live), `robots_root`, `library_maintainer`. If the file is missing, run the installer
   or ask the person for the paths.
 - **Who is running this?** `library_maintainer: true` means the library maintainer: owner rulings apply as stated, and
-  library git changes are asked about. Anyone else: treat the owner rulings as the house style but confirm the taste
-  rulings (budget, look trade-offs), and **don't run git commands that change the asset library**; hand new assets
-  over. If the config doesn't say, ask.
+  library git changes are asked about. Anyone else: the owner rulings are the house style (they may override them),
+  and **don't run git commands that change the asset library**; hand new assets over. If the config doesn't say, ask.
 - Needs: Blender 5.x on PATH, python3, ImageMagick (`magick`), systemd user scopes (for the guard), git + git-lfs for
   the library.
 
 ## Workflow
 
-### 1. Intake: ask before running anything
+### 1. Intake: look, then assume
 
-Look cheaply first (file name, size and folder; earlier outputs; an existing robot config; other sessions), without
-opening a big CAD yourself. Then ask, grouped into AskUserQuestion calls of up to 4 questions, your recommended default
-first. The full list with the reasons is in [references/intake.md](references/intake.md); the core:
+Look first (file name, size and folder; earlier outputs and owner edits; an existing robot config; other sessions).
+Then assume, don't ask ([references/intake.md](references/intake.md) §2 has how to decide each):
 
-1. Which file is the source, is it final, and do I import it (big CADs: the owner usually imports)?
-2. Where do outputs go (default: next to the source, never inside a Unity `Assets/` folder)? Did you edit an earlier
-   output?
-3. Which mechanisms move, which panels are clear, is the underside ever seen?
-4. Anything to keep exactly (team numbers, lettering, logos, decorative patterns), anything you already simplified?
-5. Swerve modules: vendor, revision, exactly the vendor's? Vendor CAD available? Library or robot-only asset?
-6. Budget if not "as low as possible" (100k–500k visible tris, aim low); other sessions running; what to deliver and
-   who pushes.
+- **Source and import**: the file given, final; if nothing provided is a `.blend`, import it yourself.
+- **Outputs and delivery**: next to the source, the default deliverables, not a drop-in, nothing pushed without an OK.
+- **Budget**: always the minimum tris with no visible loss.
+- **Moving and clear parts**: from the hierarchy, names and materials; the underside is seen.
+- **Kept features**: find bumper numbers, lettering, logos and decorative patterns yourself and keep them sharp; the
+  owner's own simplified parts stay.
+- **Swerve modules**: vendor and revision from the part names, confirmed by fitting the library module; library if it
+  fits, else robot-only (A/B at the end).
+- **Everything else settled** in references/owner-rules.md (wheel angle, one-colour bearings, solid hex, chain loops,
+  library assets by default, …).
 
-Don't ask settled things (references/owner-rules.md: swerve wheel angle never matters, bearings are one colour, hex
-stock is solid, chains are one loop, library assets by default, …).
+Ask only for permissions (downloads, commits, pushes, deletions, writing outside the robot folder) and real blockers.
 
 ### 2. Setup
 
@@ -90,8 +92,9 @@ soup, box-section sizes, the heaviest meshes with renders of the top ~40, every 
 and candidate library match, and the robot's lowest points (ground contact: keep the CAD).
 
 Show the owner: totals, the biggest offenders, the planned method per group of parts, every library swap (and what has
-no match), run-time estimate, the batched cleanup plan for a very large CAD, and the part-specific questions (second
-intake round). Once those are answered, run; don't wait for approval of the plan itself.
+no match), the kept identity features, run-time estimate, the batched cleanup plan for a very large CAD, and an
+"Assumed" list (moving groups, clear parts, module and part identities, anything else you decided). Then run; don't wait
+for approval of the plan or answers to the assumptions: the owner corrects them if needed.
 
 ### 4. Robot config
 

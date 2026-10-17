@@ -15,7 +15,7 @@ How to build a new asset for the library (or for one robot) so it matches the ex
 ## 1. Rules for every asset
 
 - **Check it doesn't exist first**: `ls Components | grep -i <part number or size>`, open the closest candidates and
-  compare sizes, AND ask the robot sessions running now. Two sessions built the same wheel into the same folder the same
+  compare sizes, AND check with the robot sessions running now. Two sessions built the same wheel into the same folder the same
   night; the second overwrote the first.
 - **Analyse the reference asset before modelling** (the existing module for modules, the existing compliant wheel for
   wheels, the motor assets for motors, the Limelight 4 for cameras): map its low-poly objects to its own `HP` CAD
@@ -72,7 +72,9 @@ Three starting points:
   `KEEP_AS_IS` for motor pieces) → `swerve_select.py` → `swerve_asset.py`). `swerve_select.py`'s constants (steer axis,
   bottom-plate z, pixel thresholds, category rules) are per module; check its classification of every part.
 - A robot whose module differs from the vendor's (taller, other standoffs, through-frame bolts, another wheel) gets a
-  robot-kept asset next to the robot. Ask for the vendor CAD: it beats the robot's CAD for the library asset.
+  robot-kept asset next to the robot. Vendor CAD beats the robot's CAD for a library asset: use it if it is in the robot
+  folder or the library's HP collections; otherwise build from the robot's and mention in the summary that vendor CAD
+  would improve it.
 - Placing: fit on frame-fixed parts only (trimmed point-to-surface ICP; whole-module ICP and plate-only ICP slide), then
   refit each moving sub-assembly (wheel fork) on its own CAD counterpart; check axle height and direction numerically.
 - Any change to a module asset: rebuild, reinstall, rerun or refit every robot that uses it.

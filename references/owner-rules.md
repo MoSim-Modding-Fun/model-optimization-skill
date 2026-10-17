@@ -2,8 +2,7 @@
 
 Everything the owner (the library maintainer) has ruled across past robot jobs, in their words where it matters. The
 words are quoted because the owner answers tersely and the exact wording has been misread before. When someone else
-runs the skill, these are the house style: follow them, and confirm the taste rulings (budget, look trade-offs) with
-that person at intake.
+runs the skill, these are the house style: follow them unless that person says otherwise.
 
 If two rulings seem to conflict, the later one wins; say so to the owner rather than picking silently.
 
@@ -39,13 +38,15 @@ If two rulings seem to conflict, the later one wins; say so to the owner rather 
 
 | Rule | Owner's words / ruling |
 |---|---|
-| Ask at intake, default afterwards | Ask everything unclear before the runs ("ask over assuming"). After that, look trade-offs get the documented default and go into one batch at the end: "Show me anything I have to decide at the end with tri counts and images of both options." |
-| Show the plan and keep going | After the inventory, show the plan, the biggest offenders and any part questions; once those are answered, run. Don't wait for approval of the plan itself. A session that paused there was told "when the fuck did i tell you to stop". |
+| Assume, don't ask | "This should not be asked it should be assumed" (2026-10-16, about swerve modules, kept features, budget and delivery, after the same for moving/clear parts, the underside and imports). Everything the files, measurements or house rules settle is assumed and stated in the plan; ask only for permissions and real blockers. Look trade-offs get the documented default and go into one batch at the end: "Show me anything I have to decide at the end with tri counts and images of both options." |
+| Show the plan and keep going | After the inventory, show the plan, the biggest offenders and an "Assumed" list, then run. Don't wait for approval of the plan or the assumptions. A session that paused there was told "when the fuck did i tell you to stop". |
 | Mid-run decision windows | When the owner says they have time ("If you have any decisions I need to make now, let me know now"), show the pending decisions then, as AskUserQuestion A/B options with images. Never stop on your own to ask. |
 | Not a drop-in | "Unless specifically told, assume it is not being replaced directly in unity." |
 | Never modify the input | Outputs next to it: `<name> - simplified.blend`. "If I've already edited a previous output, work on top of my saved file (back it up first) instead of regenerating from scratch." |
+| Moving and clear parts | "assume the moving parts and clear parts" (2026-10-16): infer them from the hierarchy, names and materials; don't ask. State the assumptions in the plan. |
+| Underside | "assume underside will be seen." (2026-10-16): holes and parts on the underside count as visible (`NO_FLOOR_ALL = True`). |
 | Never delete parts | "just dont delete hidden ones, mark them for manual review by me." Hidden, duplicate, barely visible and replaced parts go into `REVIEW - …` collections. The owner may delete REVIEW later; that's their call. |
-| Big CAD imports | The owner imports big `.glb` CADs themselves ("I will import it into blender, just gather info and wait") unless the request says to import. Small vendor files they hand over are fine to import. Ask when unsure. |
+| Imports | "If all thats provided is not a blend, assume you import" (2026-10-16): when no `.blend` is given, import the `.glb` / `.gltf` / STEP / FBX yourself. (When the owner says they will import, wait.) |
 | Decision images | Put them in the review folder AND send them when asking (small JPGs). "Where are the images for the decisions?" came from a session that only described them. |
 | Per-object images | "When fully finished I want images of each unique object. at least 2 images, make sure i can see all the detail. it should be separate, one object per image. each a unique id." |
 | End marker | Every finished job ends with the line `SIMPLIFICATION DONE`. |
@@ -57,7 +58,7 @@ If two rulings seem to conflict, the later one wins; say so to the owner rather 
 
 | Topic | Ruling |
 |---|---|
-| Budget | "as low as possible … Past models have gotten anywhere from 100k to 500k. Aim for the lower end but its not a hard cutoff." |
+| Budget | "should always be min tris" (2026-10-16): the minimum tris with no visible loss; never ask for a target. (Earlier: "Past models have gotten anywhere from 100k to 500k. Aim for the lower end but its not a hard cutoff.") |
 | Look bar | Curved parts "should be smooth to the eye from like a few feet away". Big curved parts: Collapse ratio by render-error knee, constant-section rings as true revolves with baked normals. Tri count is secondary to that bar. |
 | Round parts | "gears should be remodelled into cylinders". Rollers, gears, pulleys, sprockets, spacers, bearings, bolts, rivets → lathe cylinders; teeth and spoke windows go. Side counts 8 / 16 / 24 / 32 / 48 / 64 for radius < 6 / 6–12 / 12–20 / 20–35 / 35–45 / ≥ 45 mm. |
 | Lathes are remodels | "stuff like these should be remodeled not decimated", "you dont need grooves. one cylinder can replace all the grooves", "dont need the bands". Flanges, hubs, bores and cones stay. |

@@ -32,7 +32,8 @@ def group_of(o):
 # SEE_THROUGH_GROUPS = ()           # groups of clear parts (polycarbonate) that never hide anything or fill a hole
 # VIS_DENSE = False                 # hole visibility from the centre + 6 rim points (slots seen only straight-on)
 # FLOOR_Z = None                    # floor height in m; None = the lowest object (pin it if helper cubes hang below)
-# NO_FLOOR_ALL = False              # no floor occluder at all (library asset builds: an asset mounts any way up)
+NO_FLOOR_ALL = True                 # owner default: the underside is seen, so the floor hides no hole (False only if
+                                    # the owner says the underside is never seen; library asset builds: always True)
 # NO_FLOOR_OCCLUSION = ()           # part names whose underside holes count as visible (rails seen from below)
 # HEAD_CYL_NO_OCCLUDE = False       # True / part-name set: "head cylinder" parts' CAD shank and tail hide no holes
 
