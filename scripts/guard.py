@@ -149,30 +149,45 @@ def describe(m):
 
 def priority_running(pattern, min_mb):
     """YIELD_TO: a process whose command line matches `pattern` and holds >= min_mb MB resident (Linux /proc), i.e. the
-    owner's priority session is busy. The guard's ancestors (the shell whose command holds the pattern) are skipped."""
+    owner's priority session is busy. The guard's ancestors (the shell whose command holds the pattern) and the guard's
+    own job (a guarded Unity -batchmode run would match "-batchmode") are skipped."""
     if not pattern or not os.path.isdir("/proc"):
         return None
     import re
     rx, page = re.compile(pattern), os.sysconf("SC_PAGE_SIZE")
-    skip, p = set(), os.getpid()
-    while p > 1 and p not in skip:
-        skip.add(p)
-        try:
-            p = int(open(f"/proc/{p}/stat").read().rsplit(")", 1)[1].split()[1])
-        except (OSError, ValueError, IndexError):
-            break
+    stat = {}  # pid -> (ppid, rss pages)
     for d in os.listdir("/proc"):
-        if not d.isdigit() or int(d) in skip:
+        if d.isdigit():
+            try:
+                f = open(f"/proc/{d}/stat").read().rsplit(")", 1)[1].split()
+                stat[int(d)] = (int(f[1]), int(f[21]))
+            except (OSError, ValueError, IndexError):
+                pass
+    me, skip = os.getpid(), set()
+    p = me
+    while p > 1 and p not in skip:  # ancestors
+        skip.add(p)
+        p = stat.get(p, (0, 0))[0]
+    kids = {}
+    for pid, (ppid, _) in stat.items():
+        kids.setdefault(ppid, []).append(pid)
+    todo = [me]
+    while todo:  # the guard's own job and everything it started
+        p = todo.pop()
+        for c in kids.get(p, []):
+            if c not in skip:
+                skip.add(c)
+                todo.append(c)
+    for pid, (_, rss) in stat.items():
+        rss_mb = rss * page / 2 ** 20
+        if pid in skip or rss_mb < min_mb:
             continue
         try:
-            rss_mb = int(open(f"/proc/{d}/stat").read().rsplit(")", 1)[1].split()[21]) * page / 2 ** 20
-            if rss_mb < min_mb:
-                continue
-            cmd = open(f"/proc/{d}/cmdline", "rb").read().replace(b"\0", b" ").decode(errors="replace").strip()
-        except (OSError, ValueError, IndexError):
+            cmd = open(f"/proc/{pid}/cmdline", "rb").read().replace(b"\0", b" ").decode(errors="replace").strip()
+        except OSError:
             continue
         if rx.search(cmd):
-            return f"pid {d} {cmd[:70]} ({rss_mb:.0f} MB)"
+            return f"pid {pid} {cmd[:70]} ({rss_mb:.0f} MB)"
     return None
 
 
