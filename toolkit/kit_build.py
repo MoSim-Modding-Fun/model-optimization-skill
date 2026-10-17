@@ -27,9 +27,9 @@ def run(cmd, logf):
     t = time.time()
     with open(logf, "w") as f:
         r = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=HERE)
-    txt = open(logf).read()
+    txt = open(logf, encoding="utf-8", errors="replace").read()
     if r.returncode != 0 or "Traceback" in txt:
-        print(open(logf).read()[-3000:])
+        print(txt[-3000:])
         raise SystemExit(f"FAILED {' '.join(cmd[:4])} ... see {logf}")
     return time.time() - t, txt
 
@@ -41,7 +41,7 @@ for key in keys:
     folder = spec["folder"]
     name = spec.get("asset", folder)
     libf = os.path.join(LIB, getattr(cfg, "LIB_SUBDIR", ""), folder, folder + ".blend")
-    B = ["blender", "-b"]
+    B = [paths.blender(), "-b"]
     if start <= 0:
         dt, out = run(B + [SRC, "--python", "kit_extract.py", "--", f"{A}/work.blend", spec["src"]] +
                       ([spec["key"]] if spec.get("key") else []), f"{A}/extract.log")

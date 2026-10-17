@@ -17,8 +17,7 @@ new assets: [building-assets.md](building-assets.md).
 
 - GitHub: https://github.com/MoSim-Modding-Fun/Asset-Library (branch `main`; every `.blend` in **git LFS**; `*.blend1`
   ignored).
-- Local clone: the path in the skill's config (`asset_library`, set by `install.sh`; `python3 $TK/paths.py` style
-  lookups go through `toolkit/paths.py`). It holds `Components/`, `Materials/RobotMaterials.blend` (the shared finishes)
+- Local clone: the path in the skill's config (`asset_library`, set by `install.py`; `python3 "$TK/paths.py" library` prints it). It holds `Components/`, `Materials/RobotMaterials.blend` (the shared finishes)
   and `Media/`.
 - Before a job, check the clone is present and current: `git -C "<lib>" status --short`, `git -C "<lib>" rev-parse HEAD`
   vs `git -C "<lib>" ls-remote origin main` (both read-only). Untracked folders in `Components/` are assets someone built
@@ -104,7 +103,7 @@ After a module swap:
   one shows p90 ~26 mm and "keep" lines on every housing).
 
 Motor caps: the library Kraken X60 has an open rear notch. A 20-tri cap (built from the library motor's own notch,
-`$TK/kraken_cap_asset.py`) goes on **only** where the CAD motor had a cap: the pipeline measures how much of the cap's
+`"$TK/kraken_cap_asset.py"`) goes on **only** where the CAD motor had a cap: the pipeline measures how much of the cap's
 notch-filling surface lies on CAD geometry (≥ 0.5 → cap) and logs `kraken cap check … coverage`.
 
 ## 5. Orientation and placement checks (after run 1, every robot)

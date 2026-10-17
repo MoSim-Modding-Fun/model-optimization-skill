@@ -1,7 +1,7 @@
 # The toolkit
 
 `toolkit/` holds the headless Blender scripts (tested on Blender 5.x). Run them as
-`<guard> blender -b <file> --python $TK/<script>.py -- <args>`; per-robot settings come from `robots/r<name>.py`,
+`<guard> blender -b <file> --python "$TK/<script>.py" -- <args>`; per-robot settings come from `robots/r<name>.py`,
 selected with `ROBOT=<name>`. Robot configs live in your own folder (config `robot_config_dirs`); `toolkit/robots/`
 holds only module configs and `rexample.py`, a commented template. Paths (the asset library) come from
 `toolkit/paths.py` (config file or environment), never from the scripts.
@@ -18,27 +18,27 @@ holds only module configs and `rexample.py`, a commented template. Paths (the as
 TK=<skill>/toolkit; S=<skill>/scripts; W="<robot>/_work"; SRC="<robot>/<source>.blend"
 export ROBOT=<name>                                                    # robots/r<name>.py
 # 0. prep: orig_names.json, tf_src.json, cad_mats.json, weld, explode cfg.EXPLODE -> $W/exploded.blend
-$S/bl.sh "$SRC" --python $TK/prep.py -- "$W"
+"$S/bl.sh" "$SRC" --python "$TK/prep.py" -- "$W"
 # 1. visibility (~1–5 min)
-$S/bl.sh "$W/exploded.blend" --python $TK/vis.py -- "$W/vis.json" 80 1400
+"$S/bl.sh" "$W/exploded.blend" --python "$TK/vis.py" -- "$W/vis.json" 80 1400
 # 2. simplify (~10–45 min; planning, library fits and hole ray tests dominate)
-$S/bl.sh "$W/exploded.blend" --python $TK/pipeline.py -- "$W/vis.json" "$W/run1/out.blend" "$W/run1/report.json"
+"$S/bl.sh" "$W/exploded.blend" --python "$TK/pipeline.py" -- "$W/vis.json" "$W/run1/out.blend" "$W/run1/report.json"
 # 3. exploded pieces back into their objects, final dissolve + shading + colour sync
-$S/bl.sh "$W/run1/out.blend" --python $TK/implode.py -- "$W/run1/imploded.blend"
-$S/bl.sh "$W/run1/imploded.blend" --python $TK/phase3.py -- "$W/run1/final.blend" "$W/run1/phase3.json" --cad-mats "$W/cad_mats.json"
+"$S/bl.sh" "$W/run1/out.blend" --python "$TK/implode.py" -- "$W/run1/imploded.blend"
+"$S/bl.sh" "$W/run1/imploded.blend" --python "$TK/phase3.py" -- "$W/run1/final.blend" "$W/run1/phase3.json" --cad-mats "$W/cad_mats.json"
 # 4. QA renders
-$S/bl.sh "$SRC" --python $TK/render_pairs.py -- before "$W/run1/pairs.json" "$W/run1/pairs"   # once per source
-CULL=1 $S/bl.sh "$W/run1/final.blend" --python $TK/render_pairs.py -- after "$W/run1/pairs.json" "$W/run1/pairs"   # culled like Unity
-LOCK=0 $S/guard.sh python3 $TK/make_sheets.py "$W/run1"
-$S/bl.sh "$SRC" --python $TK/compare.py -- "$W/cmp/before" 0 clean
-$S/bl.sh "$W/run1/final.blend" --python $TK/compare.py -- "$W/cmp/run1" 1
+"$S/bl.sh" "$SRC" --python "$TK/render_pairs.py" -- before "$W/run1/pairs.json" "$W/run1/pairs"   # once per source
+CULL=1 "$S/bl.sh" "$W/run1/final.blend" --python "$TK/render_pairs.py" -- after "$W/run1/pairs.json" "$W/run1/pairs"   # culled like Unity
+LOCK=0 "$S/guard.sh" python3 "$TK/make_sheets.py" "$W/run1"
+"$S/bl.sh" "$SRC" --python "$TK/compare.py" -- "$W/cmp/before" 0 clean
+"$S/bl.sh" "$W/run1/final.blend" --python "$TK/compare.py" -- "$W/cmp/run1" 1
 # 5. checks
-$S/bl.sh "$W/run1/final.blend" --python $TK/verify.py -- "$W/orig_names.json" "$W/run1/verify.fbx"
-$S/bl.sh "$W/run1/final.blend" --python $TK/tfcheck.py -- check "$W/tf_src.json" "$W/orig_names.json"
-$S/bl.sh "$W/run1/final.blend" --python $TK/report.py -- "$W/run1/report.json" "$W/run1/report.csv" "$W/run1/totals.json"
-$S/bl.sh "$W/run1/final.blend" --python $TK/hexcheck.py -- "$SRC" "$W/run1/hexcheck.json"
-$S/bl.sh "$W/run1/final.blend" --python $TK/capvis.py -- "$SRC" '["<object>", ...]' "$W/run1/capvis.json"
-$S/bl.sh "$SRC" --python $TK/tubevis.py -- "<object>" "$W/tv/<object>"
+"$S/bl.sh" "$W/run1/final.blend" --python "$TK/verify.py" -- "$W/orig_names.json" "$W/run1/verify.fbx"
+"$S/bl.sh" "$W/run1/final.blend" --python "$TK/tfcheck.py" -- check "$W/tf_src.json" "$W/orig_names.json"
+"$S/bl.sh" "$W/run1/final.blend" --python "$TK/report.py" -- "$W/run1/report.json" "$W/run1/report.csv" "$W/run1/totals.json"
+"$S/bl.sh" "$W/run1/final.blend" --python "$TK/hexcheck.py" -- "$SRC" "$W/run1/hexcheck.json"
+"$S/bl.sh" "$W/run1/final.blend" --python "$TK/capvis.py" -- "$SRC" '["<object>", ...]' "$W/run1/capvis.json"
+"$S/bl.sh" "$SRC" --python "$TK/tubevis.py" -- "<object>" "$W/tv/<object>"
 ```
 
 The before pass writes `pairs.json` (the part list and framing) and the `_before.png` images; the after pass adds the

@@ -85,9 +85,10 @@ def world_bbox(o):
 
 
 def peak_rss_mb():
-    for l in open("/proc/self/status"):
-        if l.startswith("VmHWM"):
-            return int(l.split()[1]) // 1024
+    import sys, os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import sysmem
+    return int(sysmem.peak_rss_mb())
 
 
 # ---------------------------------------------------------------- renders (Workbench, cavity off)

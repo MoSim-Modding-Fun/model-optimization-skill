@@ -1,6 +1,8 @@
 # Build labelled before/after contact sheets from pairs.json + report.json (plain python3, needs ImageMagick).
 #   python3 make_sheets.py [workdir]   (workdir holds pairs.json, report.json, pairs/; sheets/ is written there)
 import json, subprocess, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import paths  # noqa: E402
 HERE = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.abspath(__file__))  # work dir
 E = json.load(open(os.path.join(HERE, "pairs.json")))
 R = {x["object"]: x for x in json.load(open(os.path.join(HERE, "report.json")))["rows"]}
@@ -27,6 +29,6 @@ for s in range(0, len(order), PER):
         args += ["-label", f"{e['idx']} {e['part'][:22]}", os.path.join(HERE, f"pairs/{e['idx']:03d}_before.png"),
                  "-label", f"{tag}{short.get(e['method'], e['method'][:6])} x{e['count']} {e['tris_before']}>{e['tris_after']}",
                  os.path.join(HERE, f"pairs/{e['idx']:03d}_after.png")]
-    args += ["-font", "DejaVu-Sans", "-pointsize", "10", "-tile", "8x6", "-geometry", "190x190+2+2", os.path.join(out, f"sheet_{s // PER:02d}.png")]
+    args += ["-font", paths.font(), "-pointsize", "10", "-tile", "8x6", "-geometry", "190x190+2+2", os.path.join(out, f"sheet_{s // PER:02d}.png")]
     subprocess.run(args, check=True)
 print(len(order), "pairs ->", len(os.listdir(out)), "sheets")

@@ -5,6 +5,8 @@
 #   optional "target": [x,y,z] (local) + "radius": framing radius in m
 #   dist k: camera distance = k * bounding radius (fit), or "<m>m" = absolute metres (e.g. "1.2m" = about 4 ft)
 import bpy, sys, os, json, math
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import safe_filename  # noqa: E402
 import numpy as np
 from mathutils import Vector, Matrix
 a = sys.argv[sys.argv.index("--") + 1:]
@@ -54,7 +56,7 @@ for name, specs in spec.items():
                 cam.location = Vector(c) + d * dist
                 cam.rotation_euler = (-d).to_track_quat('-Z', 'Y' if abs(d.z) < 0.9 else 'X').to_euler()
                 lab = s.get('label', name.split('-')[3] if name.count('-') > 3 else name)
-                sc.render.filepath = os.path.join(OUT, f"{lab}_{TAG}_v{i}_{k}.png".replace(" ", "_"))
+                sc.render.filepath = os.path.join(OUT, safe_filename(f"{lab}_{TAG}_v{i}_{k}").replace(" ", "_") + ".png")
                 bpy.ops.render.render(write_still=True)
     print("SHOT", name, TAG, "tris", ntri, "r mm", round(r * 1000, 1), flush=True)
     bpy.data.objects.remove(o)

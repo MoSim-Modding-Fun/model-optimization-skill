@@ -21,8 +21,8 @@ How to build a new asset for the library (or for one robot) so it matches the ex
   wheels, the motor assets for motors, the Limelight 4 for cameras): map its low-poly objects to its own `HP` CAD
   collection and render it next to the CAD. "Same degree of detail" means what the reference includes, not CAD
   fidelity.
-- **Nothing hidden inside**: delete faces never seen with face-id renders (`$TK/asset_prune.py`: unique flat colour per
-  face, ~100+ views with culling on), then a gap check (`$TK/gapcheck.py`: 26 directions, culling off vs on, 0 differing
+- **Nothing hidden inside**: delete faces never seen with face-id renders (`"$TK/asset_prune.py"`: unique flat colour per
+  face, ~100+ views with culling on), then a gap check (`"$TK/gapcheck.py"`: 26 directions, culling off vs on, 0 differing
   pixels). A 32-ray visibility test missed faces seen only through 0.5 mm slits. `asset_prune.py` encodes face ids in 15
   bits: fewer than 32,768 faces per collection run.
 - **No phasing**: fitted pieces are clipped 0.25 mm inside neighbouring faces; check the sides in close-up, not only

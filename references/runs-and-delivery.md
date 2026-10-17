@@ -33,20 +33,20 @@ How to organise the work on disk, run it safely, present decisions and deliver. 
     simplified_backup_MMDD_HHMM.blend      the previous deliverable, before every assemble
 ```
 
-Everything big lives in `_work/` on disk; `/tmp` and the session scratchpad may be RAM (check `df /tmp`: tmpfs). A
+Everything big lives in `_work/` on disk; on Linux `/tmp` and the session scratchpad may be RAM (`df /tmp`: tmpfs). A
 12–13 GB scratchpad once froze the whole desktop. `_work` grows ~0.5 GB per run; delete superseded runs' renders at
 delivery if space matters. Keep every helper script you write in `_work/` with a one-line usage header.
 
 ## 2. Running jobs safely
 
-- **Every process through the guard**: `$S/bl.sh <blender args>` (lock, 4 GB cap, 8 threads by default),
-  `LOCK=0 MEM=2G $S/guard.sh python3 helper.py ...` for helpers. Never `blender` directly, not even a 2-second check.
-- **A whole chain under ONE guarded call**: `LOCK=1 MEM=5G $S/guard.sh bash _work/run.sh runN`. Each separately
+- **Every process through the guard**: `"$S/bl.sh" <blender args>` (lock, 4 GB cap, 8 threads by default),
+  `LOCK=0 MEM=2G "$S/guard.sh" python3 helper.py ...` for helpers. Never `blender` directly, not even a 2-second check.
+- **A whole chain under ONE guarded call**: `LOCK=1 MEM=5G "$S/guard.sh" bash _work/run.sh runN`. Each separately
   guarded step waits in the shared queue again (the lock is not first-come-first-served), and a guarded script started
   inside a guarded batch waits forever for the lock its parent holds. Short steps (renders, implode, small checks) can
   run `LOCK=0` under the RAM gate.
-- **Detach long runs** with the Bash tool's `run_in_background` (or `setsid nohup … & disown` with a done-file and an
-  exit-code file): session restarts kill plain `&` jobs. Wait by PID (`while kill -0 $PID; do sleep 20; done`) or on a
+- **Detach long runs** with the Bash tool's `run_in_background` (any OS; on Linux/macOS also `setsid nohup … & disown`
+  with a done-file and an exit-code file): session restarts kill plain `&` jobs. Wait by PID (`while kill -0 $PID; do sleep 20; done`) or on a
   `run.done` file, never with `pgrep -f` / `pkill -f` on a pattern that appears in your own command line (it matches
   itself: a wait loop sat 3 hours after the job finished, and a `pkill` killed its own shell). Anchor patterns
   (`^blender -b .*runN/`). Delete old done-markers and logs before relaunching (`tail -F` prints the OLD file first).
@@ -56,7 +56,24 @@ delivery if space matters. Keep every helper script you write in `_work/` with a
   calling it hung.
 - A running Blender has already imported the toolkit: edits by another session affect only jobs started later; a job
   launched during someone's edit can load a half-written file (check `python3 -m py_compile` first).
-- The shell may be zsh: no `mapfile`, `echo ===` fails, unmatched globs abort the command, `"$B:Assets/…"` expands
+- **Windows (Git Bash)**:
+  - Paths: forward slashes (`C:/Users/…` or `/c/Users/…`), always quoted (user folders often have spaces); stay under
+    260 characters (deep robot folders + long part names).
+  - Python: `python3` is usually the Microsoft Store stub (exit 9009, "Python was not found"); use `python` or `py -3`.
+    Under the guard a bare `python3`/`python` runs the guard's own Python, a bare `bash` is Git's bash (on a machine
+    with WSL, `bash` from Windows' own folder would start Linux instead), and a `.sh` script runs through that bash.
+  - Blender is usually not on PATH: the guard and `"$TK/paths.py" blender` use the configured one.
+  - File names can't contain `: * ? " < > |`, end in a dot or space, or be CON/NUL/COM1…, and object names often break
+    these rules (`paths.safe_filename`). Names that differ only in case land in one file (also on macOS).
+  - Keep shell scripts LF (the repo's `.gitattributes` does; CRLF breaks bash).
+  - The memory cap is a job object: it counts committed memory, a little more than the resident size Linux counts, and
+    an allocation past it fails, so Blender exits with a crash code; the guard reports that as 137 ("reached its cap").
+    If a job that fits on Linux dies at the cap here, raise `MEM` by ~1 GB when free memory allows.
+  - Interrupting a Bash call may not reach the guard there (it can run outside Claude Code's process tree): after you
+    stop a guarded job, check `tasklist | grep -i blender` and end leftovers with `taskkill //T //F //PID <pid>`.
+- **macOS**: there's no hard per-job cap; the guard polls the job's memory footprint every 2 s and kills it past `MEM`,
+  so a sudden spike can briefly overshoot. "Available" is the memory-pressure level, swap is measured against RAM.
+- The shell may be zsh (the owner's Linux machine): no `mapfile`, `echo ===` fails, unmatched globs abort the command, `"$B:Assets/…"` expands
   `:A` (write `"${B}:Assets/…"`). `rm -rf $VAR/...` is blocked by the safety check: literal paths or `"${VAR:?}"`.
   The owner's interactive shell is fish: heredocs in commands you hand them fail; use `-m` flags.
 
@@ -69,7 +86,9 @@ set -u
 TK=<skill>/toolkit; W="<robot folder>/_work"; O="$W/$1"
 rm -rf "${O:?}"; mkdir -p "$O"
 export ROBOT=<config name>
-B() { blender -b -t 8 "$@"; }                  # already inside the guard's scope
+for PY in python3 python py; do "$PY" -c 'import sys; sys.exit(sys.version_info < (3, 8))' 2>/dev/null && break; done
+BLENDER="$("$PY" "$TK/paths.py" blender)"        # the configured Blender (any OS; Windows' python3 is a stub)
+B() { "$BLENDER" -b -t 8 "$@"; }                # already inside the guard's cap
 B "$W/exploded.blend" --python "$TK/pipeline.py" -- "$W/vis.json" "$O/simplified_exploded.blend" "$O/report.json" > "$O/pipeline.log" 2>&1 &&
 B "$O/simplified_exploded.blend" --python "$TK/implode.py" -- "$O/imploded.blend" > "$O/implode.log" 2>&1 &&
 B "$O/imploded.blend" --python "$TK/phase3.py" -- "$O/phase3.blend" "$O/phase3.json" --cad-mats "$W/cad_mats.json" > "$O/phase3.log" 2>&1 &&
@@ -146,7 +165,7 @@ SIMPLIFICATION DONE
 
 - Commit or push only with an OK, in any repo. No "Co-Authored-By: Claude …" trailer.
 - The asset library: asset-library.md §1.
-- A robot repository with several sessions: run git under a shared lock (`flock ~/.cache/mosim-git.lock git …`); one
+- A robot repository with several sessions: run git under a shared lock (`"$S/guard.sh" --lock --lock-name git -- git …`); one
   commit per robot for the models and review folder, then `_work` in parts (≤ ~1,500 files / 1.5 GB each); `.blend`,
   `.glb`, `.gltf`, `.step` in LFS, while FBX and images may not be (GitHub rejects files over 100 MB outside LFS); leave
   out caches (a throwaway Unity project's `Library/`), raw renders and `*.blend1`.

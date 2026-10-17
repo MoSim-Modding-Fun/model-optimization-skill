@@ -46,13 +46,14 @@ Set `save_version = 0` or check the output before rerunning, to avoid stray `.bl
 
 ## 3. STEP
 
-Blender has no STEP importer. `$TK/step_import.py` runs in a venv with OpenCASCADE bindings, `$TK/step_build.py` builds
-the `.blend` the pipeline expects. Ask before installing (it downloads ~1.3 GB).
+Blender has no STEP importer. `"$TK/step_import.py"` runs in a venv with OpenCASCADE bindings, `"$TK/step_build.py"` builds
+the `.blend` the pipeline expects. Ask before installing (it downloads ~1.3 GB). On Windows the venv's programs are in
+`Scripts\` instead of `bin/`.
 
 ```bash
-V="<robot>/_work/occ_venv"; python3 -m venv "$V" && "$V/bin/pip" install cadquery-ocp
-LOCK=0 MEM=6G guard.sh "$V/bin/python" $TK/step_import.py export "<robot>.step" "<robot>/_work/import/e050" 0.05 0.25
-MEM=6G bl.sh --factory-startup --python $TK/step_build.py -- "<robot>/_work/import/e050" "<robot>.blend"
+V="<robot>/_work/occ_venv"; python3 -m venv "$V" && "$V/bin/pip" install cadquery-ocp      # Windows: "$V/Scripts/pip"
+LOCK=0 MEM=6G guard.sh "$V/bin/python" "$TK/step_import.py" export "<robot>.step" "<robot>/_work/import/e050" 0.05 0.25
+MEM=6G bl.sh --factory-startup --python "$TK/step_build.py" -- "<robot>/_work/import/e050" "<robot>.blend"
 ```
 
 - Tolerances 0.05 mm linear / 0.25 rad angular gave ≥ 25 segments on any hole; meshing takes seconds, so try 2–3
@@ -70,7 +71,7 @@ MEM=6G bl.sh --factory-startup --python $TK/step_build.py -- "<robot>/_work/impo
 ## 4. The game's own FBX (normal flow, the default)
 
 "Unless specifically told, assume it is not being replaced directly in unity." Treat the game's FBX like any other
-source: import it with full names (`$TK/fbx_import.py`; the stock importer cuts names over 63 bytes to 55 chars + a
+source: import it with full names (`"$TK/fbx_import.py"`; the stock importer cuts names over 63 bytes to 55 chars + a
 hash), simplify, deliver `<name> - simplified.blend`. New objects, library colours and dropped material slots are all
 fine. Modifier stacks don't survive an FBX, so the owner's simplified parts can't be detected by their modifiers:
 treat parts that already look simplified (belts or chains as ~260-tri loops) as already light.
@@ -91,7 +92,7 @@ meshes by fileID), the contract is strict:
      see-through `"notgame"` group).
   2. **Round trip of the untouched import first**: `fbx_dropin.py export` with `FBX_OPTS` (units: a game FBX may have
      UnitScaleFactor 100) and `FBX_ORDER=<game fbx>` → `fbx_dropin.py compare` clean (`first_model_diffs` 0) → the
-     **Unity probe** (`$TK/unity_probe/`: a throwaway Unity project imports the FBX with the game's `.meta` and checks
+     **Unity probe** (`"$TK/unity_probe/"`: a throwaway Unity project imports the FBX with the game's `.meta` and checks
      every prefab mesh reference) with 0 problems. Blender-side compares once passed while 19 prefab mesh references
      were broken in Unity.
   3. Every run: pipeline → implode → phase3 → `game_restore.py restore` (library materials onto the CAD's slots by
@@ -110,7 +111,7 @@ meshes by fileID), the contract is strict:
 Some Onshape robots come in standing on their side (wheels at y = 0). The pipeline needs Z up (floor = min z, compare
 views): run everything on a work copy where ONLY the root empty is rotated -90° about X, restore the root's exact
 rotation (mode and quaternion) in the deliverable, and compare every object's world matrix with the ORIGINAL import
-(`$TK/tfcheck.py`, 0.0 deviation). Objects the run adds must sit under the root. `VIEWS` and `LIB_NUDGE_MM` are in the
+(`"$TK/tfcheck.py"`, 0.0 deviation). Objects the run adds must sit under the root. `VIEWS` and `LIB_NUDGE_MM` are in the
 work frame. Deliver in the source's orientation.
 
 ## 7. Very large CADs: batched cleanup first
@@ -118,7 +119,7 @@ work frame. Deliver in the source's orientation.
 Several million unique tris, or single meshes over ~1M: run Phase 1 before the pipeline.
 
 ```bash
-LOCK=1 MEM=6G guard.sh python3 $TK/cleanup/run_phase1.py "<dir>/<robot>.blend" [--cap 1000000] [--alone 500000]
+LOCK=1 MEM=6G guard.sh python3 "$TK/cleanup/run_phase1.py" "<dir>/<robot>.blend" [--cap 1000000] [--alone 500000]
 ```
 
 - `cleanup/plan.py` hashes local geometry + materials into unique units and packs them into batches of ≤ 1M unique

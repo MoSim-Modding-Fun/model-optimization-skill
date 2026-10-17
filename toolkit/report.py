@@ -32,7 +32,7 @@ lib = collections.defaultdict(lambda: [0, 0])
 for r in rows:
     if r["method"].startswith("library") and not r["review"]:
         lib[r["method"][9:]][0] += 1; lib[r["method"][9:]][1] += r["tris_final"]
-with open(CSV, "w", newline="") as f:
+with open(CSV, "w", newline="", encoding="utf-8") as f:
     w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
     w.writeheader(); w.writerows(sorted(rows, key=lambda r: (r["review"], -r["tris_final"])))
 tot.update(total=tot["visible"] + tot["review"], source=rep.get("before"), by_method=dict(by),

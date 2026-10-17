@@ -1,8 +1,12 @@
 # Phase 1 for very large CADs: Merge by Distance -> Limited Dissolve in batches, one Blender process per batch,
 # resumable (progress.json + checkpoints in <dir>/_work). Plain python3.
+# Run it under the guard (guard.py / guard.sh), so every Blender it starts shares the memory cap:
 #   python3 cleanup/run_phase1.py "<dir>/<name>.blend" [--cap 1000000] [--alone 500000]  ->  "<dir>/<name> - cleaned.blend"
 import json, os, subprocess, sys, time, argparse
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(HERE))
+import paths, sysmem  # noqa: E402
+BLENDER = paths.blender()
 ap = argparse.ArgumentParser()
 ap.add_argument("src"); ap.add_argument("--cap", type=int, default=1_000_000); ap.add_argument("--alone", type=int, default=500_000)
 A = ap.parse_args()
@@ -19,14 +23,12 @@ def log(*a):
 
 
 def mem_avail_gb():
-    for l in open("/proc/meminfo"):
-        if l.startswith("MemAvailable"):
-            return int(l.split()[1]) / 1048576
+    return sysmem.mem()["available"] / 2 ** 30
 
 
 if not os.path.exists(PLAN):
     units_json = os.path.join(WORK, "units.json")
-    subprocess.run(["blender", "-b", SRC, "--python", os.path.join(HERE, "plan.py"), "--", units_json], check=True,
+    subprocess.run([BLENDER, "-b", SRC, "--python", os.path.join(HERE, "plan.py"), "--", units_json], check=True,
                    stdout=open(os.path.join(WORK, "logs", "plan.log"), "w"), stderr=subprocess.STDOUT)
     units = sorted(json.load(open(units_json)), key=lambda u: -u["tris"])
     batches = []
@@ -56,7 +58,7 @@ for b in plan:
     log(f"B{bi:02d} start: {len(b['units'])} geometries, {b['unique_tris']:,} unique tris, from {os.path.basename(prog['last_ckpt'])}")
     t = time.time()
     with open(os.path.join(WORK, "logs", f"b{bi:02d}.log"), "w") as lf:
-        r = subprocess.run(["blender", "-b", prog["last_ckpt"], "--python", os.path.join(HERE, "phase1_batch.py"), "--",
+        r = subprocess.run([BLENDER, "-b", prog["last_ckpt"], "--python", os.path.join(HERE, "phase1_batch.py"), "--",
                             PLAN, str(bi), ck, res, os.path.join(WORK, "p1_renders")], stdout=lf, stderr=subprocess.STDOUT,
                            timeout=5400 if b["unique_tris"] > A.cap else 1800)
     if r.returncode != 0 or not os.path.exists(res) or not os.path.exists(ck):
@@ -75,7 +77,7 @@ for b in plan:
     log(f"B{bi:02d} done in {time.time() - t:.0f}s: {out['tris_before']:,} -> {out['tris_after']:,} tris, peak {out['peak_rss_mb']} MB, "
         f"max bbox change {max(u['bbox_dmm'] for u in out['units'])} mm")
 if len(prog["done_batches"]) == len(plan):
-    subprocess.run(["blender", "-b", prog["last_ckpt"], "--python-expr",
+    subprocess.run([BLENDER, "-b", prog["last_ckpt"], "--python-expr",
                     f"import bpy; bpy.ops.wm.save_as_mainfile(filepath={CLEANED!r}, copy=True, compress=True)"],
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     log("ALL DONE ->", CLEANED, f"({sum(v['tris_after'] for v in prog['batches'].values()):,} tris)")

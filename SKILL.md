@@ -31,9 +31,9 @@ them all up front.
 4. **Never delete parts.** Hidden, duplicate, barely visible and library-replaced parts go into `REVIEW - …`
    collections for the owner's review.
 5. **Guard every process and keep RAM free.** Blender, Python helpers, big greps, parsers, Unity: all through
-   `$S/bl.sh` / `$S/guard.sh` (own memory-capped scope, machine-wide lock for heavy jobs, start gate, watchdog). No
+   `"$S/bl.sh"` / `"$S/guard.sh"` (own memory-capped scope, machine-wide lock for heavy jobs, start gate, watchdog). No
    exceptions, not even a 2-second `--python-expr`. The guard's RAM check is never removed or loosened.
-6. **Disk, not `/tmp`.** `/tmp` and Claude scratchpads may be RAM (check `df /tmp`). Blends, renders and QA output go in
+6. **Disk, not `/tmp`.** On Linux `/tmp` and Claude scratchpads may be RAM (`df /tmp` says tmpfs). Blends, renders and QA output go in
    the robot's `_work/`.
 7. **Shared toolkit and library.** Other sessions may run simplifications in parallel. Check ListAgents and the
    toolkit's git status before editing a shared script; announce it; never overwrite others' work.
@@ -43,15 +43,21 @@ them all up front.
 
 ## Before the first job on a machine
 
-- The toolkit reads machine paths from `~/.config/simplify-robot-model/config.json` (written by `$SKILL/install.sh`) or
-  environment variables (`$TK/paths.py`): `asset_library` (the clone of the asset library), `robot_config_dirs` (where
+- The toolkit reads machine paths from `~/.config/simplify-robot-model/config.json` (written by `$SKILL/install.py`) or
+  environment variables (`"$TK/paths.py"`): `asset_library` (the clone of the asset library), `robot_config_dirs` (where
   your `r<name>.py` robot configs live), `robots_root`, `library_maintainer`. If the file is missing, run the installer
-  or ask the person for the paths.
+  (`python3 "$SKILL/install.py"`) or ask the person for the paths.
 - **Who is running this?** `library_maintainer: true` means the library maintainer: owner rulings apply as stated, and
   library git changes are asked about. Anyone else: the owner rulings are the house style (they may override them),
   and **don't run git commands that change the asset library**; hand new assets over. If the config doesn't say, ask.
-- Needs: Blender 5.x on PATH, python3, ImageMagick (`magick`), systemd user scopes (for the guard), git + git-lfs for
-  the library.
+- **Windows, macOS and Linux.** Needs: Blender 5.x (found on PATH or in the usual install folder, or set as `blender` in
+  the config), Python 3.8+, ImageMagick 7 (`magick`), git + git-lfs. Commands in this skill are bash: on Windows Claude
+  Code runs them in Git Bash, so `"$S/bl.sh"` works there too; from cmd/PowerShell use `scripts\bl.cmd` /
+  `scripts\guard.cmd`. `python3` in commands means your Python 3: on Windows `python3` is usually the Microsoft Store
+  stub, so run `python` there (under the guard, a bare `python3` already means the guard's own Python). Quote every
+  path: Windows user folders often have spaces. The guard caps memory with systemd scopes on Linux, job objects on
+  Windows and a polling watchdog on macOS (`"$S/guard.py"`); Windows notes in
+  [references/runs-and-delivery.md](references/runs-and-delivery.md) §2.
 
 ## Workflow
 
@@ -80,11 +86,11 @@ Ask only for permissions (downloads, commits, pushes, deletions, writing outside
   match.
 - Find the input type in [references/input-types.md](references/input-types.md) (glTF soup, STEP, game FBX, -Y up, very
   large CAD, merged sub-assemblies) and follow its notes.
-- New robot config: copy `$TK/robots/rexample.py` (or the closest existing config) to `<robot config dir>/r<name>.py`.
+- New robot config: copy `"$TK/robots/rexample.py"` (or the closest existing config) to `<robot config dir>/r<name>.py`.
 
 ### 3. Inventory and plan (show it, then keep going)
 
-`ROBOT=<name> $S/bl.sh "<source>" --python $TK/prep.py -- "<_work>"` writes the object list, world matrices and CAD
+`ROBOT=<name> "$S/bl.sh" "<source>" --python "$TK/prep.py" -- "<_work>"` writes the object list, world matrices and CAD
 material names the checks need, welds, and splits merged sub-assemblies (`exploded.blend`). Then a guarded inventory
 script: objects, unique meshes (shared datablocks), tris placed and unique, units and up axis, the floor (helper cubes
 below the wheels → `FLOOR_Z`), the hierarchy and naming, transparent materials, the owner's modifier stacks, unwelded
@@ -107,17 +113,17 @@ one-colour bearings, `PRE_WELD_M`, caps only where the CAD had one). Every knob:
 
 Order: prep → `vis.py` → `pipeline.py` → `implode.py` → `phase3.py` → robot-specific post steps (library modules
 placed, chain loops joined, recolours, patches) → QA renders (commands: references/toolkit.md §1). Put a whole run under
-ONE guarded call (`LOCK=1 MEM=5G $S/guard.sh bash _work/run.sh runN`, template in references/runs-and-delivery.md §3),
+ONE guarded call (`LOCK=1 MEM=5G "$S/guard.sh" bash _work/run.sh runN`, template in references/runs-and-delivery.md §3),
 started with the Bash tool's `run_in_background`; wait for its notification or a done-file, never with a `pgrep -f` loop.
 Never edit a script while it runs. Expect 3–10 runs; between runs, test fixes on 1–5 parts with a small script before a
 full run, and patch small changes into the finished file instead of rerunning. After every run, diff it per object
-against the previous one (`$TK/rundiff.py`). Lessons per part type: [references/gotchas.md](references/gotchas.md).
+against the previous one (`"$TK/rundiff.py"`). Lessons per part type: [references/gotchas.md](references/gotchas.md).
 
 ### 6. QA (mandatory)
 
 [references/qa.md](references/qa.md): automated checks after every run (verify + tfcheck, totals from the final file,
 open edges, back faces vs the CAD, hexcheck, capvis on every "holes closed" claim, point-sampled z-fighting, round-hole
-fidelity, side counts, plate cap areas, library orientation by feature with `$TK/libcheck.py`, materials, smoothness of
+fidelity, side counts, plate cap areas, library orientation by feature with `"$TK/libcheck.py"`, materials, smoothness of
 big curved parts), then your own look at every pair, then fresh no-context reviewers (2–3 per round, a slice each, the
 brief template in qa.md). Verify every claim before fixing; repeat until a round is clean. Per-object images at the end.
 
@@ -148,16 +154,16 @@ The owner's machine: ~31 GB RAM with zram swap (also RAM), 24 threads, `/tmp` in
 Memory pressure there once killed the whole Claude desktop app, every session with it: processes started without their
 own scope count against the app.
 
-- `$S/bl.sh <blender args>` for every Blender call (lock, 4 GB cap, 8 threads; `LOCK=0 MEM=2G` for short checks);
-  `$S/guard.sh <cmd>` for everything else. Raise `MEM` only when `free -m` shows room. The guard waits until the job
-  fits with ≥ 15 % of RAM still free and swap ≤ 40 %, and kills it above 90 % RAM or 60 % swap. It backgrounds the
-  command (stdin heredocs don't reach it: write helper scripts to files); bound every loop that trusts a count read from
-  a file.
-- Before anything the guard doesn't cover (waking a session, a big build in another tool), check `free -m` yourself and
+- `"$S/bl.sh" <blender args>` for every Blender call (lock, 4 GB cap, 8 threads; `LOCK=0 MEM=2G` for short checks);
+  `"$S/guard.sh" <cmd>` for everything else. Raise `MEM` only when free memory allows (`python3 "$TK/sysmem.py"`). The
+  guard waits until the job fits with ≥ 15 % of RAM still free and swap ≤ 40 %, and kills it above 90 % RAM or 60 % swap
+  (Windows: 97 % of the commit limit). Write helper scripts to files in `_work/` rather than heredocs, so a rerun is
+  the same command; bound every loop that trusts a count read from a file.
+- Before anything the guard doesn't cover (waking a session, a big build in another tool), check free memory yourself and
   wait while less than ~30 % of RAM is available.
 - Keep tool output small (filter before printing).
 - Other sessions: wake them one at a time after a RAM check, and archive advisors again before waking the next.
-- Before a heavy job, hold off while `/proc/pressure/io` is high (the guard waits above 50 %).
+- Before a heavy job on Linux, hold off while IO pressure is high (the guard waits above 50 %).
 
 ## Reference files
 

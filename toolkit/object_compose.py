@@ -23,7 +23,9 @@ VIEW_NAME = {1: "front-top-right", 2: "back-bottom-left (opposite side)"}
 METHOD = {"cylinder rebuild": "lathe (revolved)", "decimate": "decimated", "remodel (sections + cutters)": "remodel",
           "library": "library asset", "hex prism (6 sides)": "hex prism", "plate rebuild": "plate rebuild",
           "unchanged (already light)": "unchanged"}
-FONT, BOLD = "/usr/share/fonts/noto/NotoSans-Regular.ttf", "/usr/share/fonts/noto/NotoSans-Bold.ttf"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import paths  # noqa: E402
+FONT, BOLD = paths.font(), paths.font(bold=True)  # font files: names differ per system
 BG, BAR = "#5a5e68", "#202228"
 
 
@@ -88,7 +90,7 @@ def compose(j):
 LIMIT = int(os.environ.get("LIMIT", 0))  # test: compose only the first N images
 with ThreadPoolExecutor(JOBS) as ex:
     done = list(ex.map(compose, jobs[:LIMIT] if LIMIT else jobs))
-with open(os.path.join(FIN, "index.csv"), "w", newline="") as f:
+with open(os.path.join(FIN, "index.csv"), "w", newline="", encoding="utf-8") as f:
     wr = csv.DictWriter(f, fieldnames=list(rows[0]))
     wr.writeheader(); wr.writerows(rows)
 print(len(rows), "objects ->", len(done), "images in", FIN)
