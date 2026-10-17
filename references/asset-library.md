@@ -76,7 +76,8 @@ new assets: [building-assets.md](building-assets.md).
 - Swerve modules: compare the per-piece result with the library module, in tris and in renders; check the revision by
   the sub-part names inside the module ("Lifted Turret" vs the plain turret) before choosing an asset.
 - Library by default: if the library asset is heavier than the simplified CAD part, keep the library one and show
-  both at the end with tri counts.
+  both at the end with tri counts (`LIB_KEEP_HEAVIER = "all"`, the template default; those rows of the run's `report.json` carry
+  `heavier_than_cad: [library tris, CAD tris]`, multi-piece swaps a "heavier … swapped anyway" log line).
 - No match for a repeated vendor part → a new library asset (owner's habit), shown as an end decision with the
   per-robot fallback.
 

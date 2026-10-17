@@ -55,6 +55,8 @@ LIMELIGHT_PARTS = set()
 # LIB_IDENTITY_MOTORS = {}          # {part: [(blend, asset, label, 4x4 mount)]}: library motors next to a module asset
 # LIB_EMPTY_IDENTITY = {}           # {empty name prefix: (blend, collection[, "object"[, key regex]])}: assembly assets
 # LIB_CAD_COLOURS = ()              # parts whose library swap keeps the CAD's colours (wheels, treads, modules)
+LIB_KEEP_HEAVIER = "all"            # library swaps go ahead even when the asset is heavier than the CAD part (owner:
+                                    # library by default, A/B at the end); or a set of part names / LIB_ASSEMBLIES labels
 KRAKEN_CAP = True                   # library Kraken X60s get a "kraken cap" only where the CAD had one (False: never)
 # KRAKEN_ASSET = ("WCP-0940 (Kraken X60)/WCP-0940 (Kraken X60).blend", "WCP-0940 (Kraken X60)")  # motor the cap fits
 

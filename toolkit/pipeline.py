@@ -324,6 +324,15 @@ def _hole_points(cc, poly):
 
 
 NO_FLOOR = set(getattr(cfg, "NO_FLOOR_OCCLUSION", ()))
+_KEEP_HEAVIER = getattr(cfg, "LIB_KEEP_HEAVIER", ())
+
+
+def keep_heavier(name):
+    """cfg.LIB_KEEP_HEAVIER: True or "all" = every library swap goes ahead even when the asset is heavier than the CAD
+    part (owner: library by default, both shown at the end); a set = those part names / LIB_ASSEMBLIES labels."""
+    return _KEEP_HEAVIER is True or _KEEP_HEAVIER == "all" or (not isinstance(_KEEP_HEAVIER, (bool, str))
+                                                              and name in _KEEP_HEAVIER)
+
 
 
 def floor_for(o):
@@ -653,9 +662,14 @@ for n_done, (mname, objs_md) in enumerate(sorted(users.items(), key=lambda kv: k
                         note_kraken_cap(entry, objs_md, Matrix(M_))
             continue
         rule = lib_rule(p, me)
+        # cfg.LIB_KEEP_HEAVIER (part names): swap even when the library asset is heavier (owner: library by default,
+        # both shown at the end with tri counts)
         if rule and build.tri_count(lib_mesh(*rule)) >= build.tri_count(me):
-            entry["note"] = "library asset is heavier than the CAD part; not swapped"
-            rule = None
+            if keep_heavier(p):  # swapped anyway; the report row carries both counts for the end-of-job A/B
+                entry["heavier_than_cad"] = [build.tri_count(lib_mesh(*rule)), build.tri_count(me)]
+            else:
+                entry["note"] = "library asset is heavier than the CAD part; not swapped"
+                rule = None
         if rule:
             lm = lib_mesh(*rule)
             sco, stri, _ = geo.mesh_arrays(lm)
@@ -1045,8 +1059,11 @@ for spec, parts_ in ASM:
     dco, dtri = np.vstack(sco_w), np.vstack(stri_w)
     lm = lib_mesh(spec["lib"], spec["asset"])
     if build.tri_count(lm) >= sum(orig_tris.get(o.name, 0) for o in parts_):
-        log(spec["label"], "library asset is heavier than the CAD pieces; kept")
-        continue
+        if not keep_heavier(spec["label"]):
+            log(spec["label"], "library asset is heavier than the CAD pieces; kept")
+            continue
+        log(spec["label"], "library asset is heavier than the CAD pieces; swapped anyway (LIB_KEEP_HEAVIER): show the A/B",
+            build.tri_count(lm), "vs", sum(orig_tris.get(o.name, 0) for o in parts_))
     lco, ltri, _ = geo.mesh_arrays(lm)
     R, t, ch = align.align(lco, ltri, dco, dtri, tiebreak="bbox" if spec.get("bbox_tiebreak") else None)
     if spec.get("flip"):  # turn about the asset's own axis through its centre after a visual check: "X"/"Y"/"Z" =

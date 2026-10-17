@@ -127,6 +127,7 @@ names, parents, transforms and collections never change.
 | `LIB_COMBOS` | `{part: [(gearbox lib, asset), (motor lib, asset)]}` for a gearbox + motor in one mesh. |
 | `LIB_IDENTITY`, `LIB_EMPTY_IDENTITY`, `LIB_IDENTITY_MOTORS` | Assets built in the part's / an assembly empty's frame; library motors as separate children of module assets. |
 | `LIB_CAD_COLOURS` | Parts whose library swap takes the CAD's colours (wheels, treads, modules: see the colour rule). |
+| `LIB_KEEP_HEAVIER` | `"all"` (template default) or `True`: every library swap goes ahead even when the asset is heavier than the CAD part (owner: library by default, both shown at the end); or a set of part names / `LIB_ASSEMBLIES` labels. Unset, both paths keep a lighter CAD part. |
 | `LIMELIGHT_PARTS` | Parts fitted against the Limelight assets; a dict forces one (`{part: "Limelight 3G"}`); takes no flip. |
 | `KRAKEN_CAP`, `KRAKEN_ASSET` | Motor caps on/off (default on: only where the CAD had a cap). |
 | `KEEP_AS_IS`, `REBUILD_KEEP_ALL_HOLES` | Part-name sets. |
